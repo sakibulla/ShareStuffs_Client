@@ -1,587 +1,356 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import api from '../utils/api';
 
+const statusBadge = (status) => {
+  const map = { pending: 'badge-warning', accepted: 'badge-success', rejected: 'badge-error', returned: 'badge-neutral' };
+  return map[status] || 'badge-ghost';
+};
+
+const emptyState = (emoji, heading, sub, action) => (
+  <div className="flex flex-col items-center justify-center py-24 text-center">
+    <div className="text-7xl mb-4">{emoji}</div>
+    <h3 className="text-2xl font-bold mb-2">{heading}</h3>
+    <p className="text-base-content/60 mb-6">{sub}</p>
+    {action}
+  </div>
+);
+
 export default function Dashboard() {
-    const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState('listings');
-    const [myItems, setMyItems] = useState([]);
-    const [myRequests, setMyRequests] = useState([]);
-    const [incomingRequests, setIncomingRequests] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        category: 'Tools',
-        dailyFee: '',
-        deposit: '',
-        location: '',
-        available: true,
-    });
-    const [formErrors, setFormErrors] = useState({});
+  const { user, logout } = useAuth();
+  const { addToast } = useToast();
+  const navigate = useNavigate();
 
-    const categories = ['Tools', 'Camping', 'Party', 'Kitchen', 'Electronics', 'Sports'];
+  const [activeTab, setActiveTab] = useState('listings');
+  const [myItems, setMyItems] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [requestFilter, setRequestFilter] = useState('All');
 
-    useEffect(() => {
-        loadData();
-    }, [activeTab]);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (activeTab === 'listings') {
+        const res = await api.get('/items/my');
+        setMyItems(res.data || []);
+      } else if (activeTab === 'requests') {
+        const res = await api.get('/requests/mine');
+        setMyRequests(res.data || []);
+      } else if (activeTab === 'incoming') {
+        const res = await api.get('/requests/lender');
+        setIncomingRequests(res.data || []);
+      }
+    } catch {
+      addToast('Failed to load data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, addToast]);
 
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            if (activeTab === 'listings') {
-                const response = await api.get('/items/my');
-                setMyItems(response.data || []);
-            } else if (activeTab === 'requests') {
-                const response = await api.get('/requests/mine');
-                setMyRequests(response.data || []);
-            } else if (activeTab === 'incoming') {
-                const response = await api.get('/requests/lender');
-                setIncomingRequests(response.data || []);
-            }
-        } catch (error) {
-            console.error('Failed to load data:', error);
-            alert('Failed to load data');
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => { loadData(); }, [loadData]);
 
-    const handleFormChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value,
-        }));
-        if (formErrors[name]) {
-            setFormErrors((prev) => ({ ...prev, [name]: '' }));
-        }
-    };
+  const handleDeleteItem = async (itemId) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await api.delete(`/items/${itemId}`);
+      addToast('Item deleted successfully!', 'success');
+      loadData();
+    } catch {
+      addToast('Failed to delete item', 'error');
+    }
+  };
 
-    const validateForm = () => {
-        const errors = {};
-        if (!formData.title.trim()) errors.title = 'Title is required';
-        if (!formData.category) errors.category = 'Category is required';
-        if (!formData.dailyFee || parseFloat(formData.dailyFee) <= 0) {
-            errors.dailyFee = 'Daily fee must be greater than 0';
-        }
-        if (!formData.deposit || parseFloat(formData.deposit) <= 0) {
-            errors.deposit = 'Deposit must be greater than 0';
-        }
-        return errors;
-    };
+  const handleRequestAction = async (requestId, action) => {
+    try {
+      await api.put(`/requests/${requestId}`, { status: action });
+      addToast(`Request ${action}!`, 'success');
+      loadData();
+    } catch {
+      addToast('Failed to update request', 'error');
+    }
+  };
 
-    const handleSubmitForm = async (e) => {
-        e.preventDefault();
-        const errors = validateForm();
+  const navItems = [
+    { key: 'listings', emoji: '📦', label: 'My Listings' },
+    { key: 'requests', emoji: '📋', label: 'My Requests' },
+    { key: 'incoming', emoji: '📬', label: 'Incoming Requests' },
+    { key: 'profile', emoji: '👤', label: 'Profile' },
+  ];
 
-        if (Object.keys(errors).length > 0) {
-            setFormErrors(errors);
-            return;
-        }
+  const filteredRequests = requestFilter === 'All'
+    ? myRequests
+    : myRequests.filter((r) => r.status === requestFilter.toLowerCase());
 
-        try {
-            const payload = {
-                ...formData,
-                dailyFee: parseFloat(formData.dailyFee),
-                deposit: parseFloat(formData.deposit),
-            };
+  const filteredIncoming = requestFilter === 'All'
+    ? incomingRequests
+    : incomingRequests.filter((r) => r.status === requestFilter.toLowerCase());
 
-            if (editingItem) {
-                await api.put(`/items/${editingItem.id}`, payload);
-            } else {
-                await api.post('/items', payload);
-            }
-
-            setShowModal(false);
-            setEditingItem(null);
-            setFormData({
-                title: '',
-                description: '',
-                category: 'Tools',
-                dailyFee: '',
-                deposit: '',
-                location: '',
-                available: true,
-            });
-
-            document.querySelector('.toast')?.remove();
-            const toast = document.createElement('div');
-            toast.innerHTML = `
-        <div class="toast toast-top toast-center">
-          <div class="alert alert-success">
-            <span>${editingItem ? 'Item updated' : 'Item added'} successfully!</span>
-          </div>
-        </div>
-      `;
-            document.body.appendChild(toast);
-
-            loadData();
-        } catch (error) {
-            const errorMsg = error.response?.data?.message || 'Failed to save item';
-            document.querySelector('.toast')?.remove();
-            const toast = document.createElement('div');
-            toast.innerHTML = `
-        <div class="toast toast-top toast-center">
-          <div class="alert alert-error">
-            <span>${errorMsg}</span>
-          </div>
-        </div>
-      `;
-            document.body.appendChild(toast);
-        }
-    };
-
-    const handleEditItem = (item) => {
-        setEditingItem(item);
-        setFormData({
-            title: item.title,
-            description: item.description,
-            category: item.category,
-            dailyFee: item.dailyFee,
-            deposit: item.deposit,
-            location: item.location,
-            available: item.available,
-        });
-        setShowModal(true);
-    };
-
-    const handleDeleteItem = async (itemId) => {
-        if (window.confirm('Are you sure you want to delete this item?')) {
-            try {
-                await api.delete(`/items/${itemId}`);
-                document.querySelector('.toast')?.remove();
-                const toast = document.createElement('div');
-                toast.innerHTML = `
-          <div class="toast toast-top toast-center">
-            <div class="alert alert-success">
-              <span>Item deleted successfully!</span>
+  return (
+    <div className="min-h-screen bg-base-200 fade-in">
+      <div className="max-w-7xl mx-auto flex">
+        {/* Sidebar */}
+        <aside className="hidden md:flex flex-col w-64 bg-base-100 border-r border-base-200 min-h-screen p-4 sticky top-16 self-start">
+          <div className="flex items-center gap-3 p-3 mb-4">
+            <div className="avatar placeholder">
+              <div className="bg-primary text-primary-content rounded-full w-12">
+                <span className="text-lg font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold truncate">{user?.name}</p>
+              <p className="text-xs text-base-content/50 truncate">{user?.email}</p>
             </div>
           </div>
-        `;
-                document.body.appendChild(toast);
-                loadData();
-            } catch (error) {
-                alert('Failed to delete item');
-            }
-        }
-    };
-
-    const handleRequestAction = async (requestId, action) => {
-        try {
-            await api.put(`/requests/${requestId}`, { status: action });
-            document.querySelector('.toast')?.remove();
-            const toast = document.createElement('div');
-            toast.innerHTML = `
-        <div class="toast toast-top toast-center">
-          <div class="alert alert-success">
-            <span>Request ${action}ed!</span>
+          <div className="divider my-0 mb-2"></div>
+          <nav className="flex flex-col gap-1 flex-1">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${
+                  activeTab === item.key ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content'
+                }`}
+              >
+                <span>{item.emoji}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="mt-auto pt-4">
+            <button
+              onClick={() => { logout(); window.location.href = '/'; }}
+              className="btn btn-ghost btn-block text-error justify-start gap-2"
+            >
+              🚪 Logout
+            </button>
           </div>
-        </div>
-      `;
-            document.body.appendChild(toast);
-            loadData();
-        } catch (error) {
-            alert('Failed to update request');
-        }
-    };
+        </aside>
 
-    const handleCloseModal = () => {
-        setShowModal(false);
-        setEditingItem(null);
-        setFormData({
-            title: '',
-            description: '',
-            category: 'Tools',
-            dailyFee: '',
-            deposit: '',
-            location: '',
-            available: true,
-        });
-        setFormErrors({});
-    };
+        {/* Main content */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 min-w-0">
+          {/* Mobile tab bar */}
+          <div className="flex md:hidden gap-1 mb-6 overflow-x-auto pb-1">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                className={`btn btn-sm flex-shrink-0 rounded-full transition-all duration-200 ${
+                  activeTab === item.key ? 'btn-primary' : 'btn-ghost'
+                }`}
+              >
+                {item.emoji} {item.label}
+              </button>
+            ))}
+          </div>
 
-    return (
-        <div className="min-h-screen bg-base-200 py-8">
-            <div className="max-w-7xl mx-auto px-4">
-                <h1 className="text-4xl font-bold mb-8">Dashboard</h1>
-
-                {/* Welcome Message */}
-                <div className="card bg-gradient-to-r from-primary to-primary/80 text-primary-content shadow-lg mb-8 p-6">
-                    <h2 className="text-2xl font-bold">Welcome back, {user?.name}!</h2>
-                    <p className="opacity-90">Manage your items and borrow requests</p>
-                </div>
-
-                {/* Tabs */}
-                <div className="tabs tabs-bordered mb-8 bg-base-100 rounded-lg shadow-md">
+          {loading ? (
+            <div className="flex justify-center py-24">
+              <span className="loading loading-spinner loading-lg text-primary"></span>
+            </div>
+          ) : (
+            <>
+              {/* My Listings */}
+              {activeTab === 'listings' && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold">My Listings</h2>
                     <button
-                        className={`tab ${activeTab === 'listings' ? 'tab-active' : ''}`}
-                        onClick={() => setActiveTab('listings')}
+                      onClick={() => navigate('/items/new')}
+                      className="btn btn-primary btn-sm rounded-full gap-1"
                     >
-                        My Listings
+                      + Add New Item
                     </button>
-                    <button
-                        className={`tab ${activeTab === 'requests' ? 'tab-active' : ''}`}
-                        onClick={() => setActiveTab('requests')}
-                    >
-                        My Requests
-                    </button>
-                    <button
-                        className={`tab ${activeTab === 'incoming' ? 'tab-active' : ''}`}
-                        onClick={() => setActiveTab('incoming')}
-                    >
-                        Incoming Requests
-                    </button>
-                </div>
+                  </div>
 
-                {/* Tab Content */}
-                {loading ? (
-                    <div className="flex justify-center py-12">
-                        <span className="loading loading-spinner loading-lg"></span>
-                    </div>
-                ) : (
+                  {myItems.length === 0 ? (
+                    emptyState('📭', 'No items listed yet', 'Start sharing your items to earn money!',
+                      <button onClick={() => navigate('/items/new')} className="btn btn-primary rounded-full">
+                        List Your First Item
+                      </button>
+                    )
+                  ) : (
                     <>
-                        {/* My Listings Tab */}
-                        {activeTab === 'listings' && (
-                            <div>
-                                <button
-                                    onClick={() => {
-                                        handleCloseModal();
-                                        setShowModal(true);
-                                    }}
-                                    className="btn btn-primary mb-6"
-                                >
-                                    + Add New Item
-                                </button>
+                      {/* Desktop table */}
+                      <div className="hidden md:block overflow-x-auto bg-base-100 rounded-2xl shadow-sm">
+                        <table className="table w-full">
+                          <thead>
+                            <tr className="bg-base-200">
+                              <th>Item</th><th>Category</th><th>Daily Fee</th><th>Status</th><th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {myItems.map((item) => (
+                              <tr key={item._id} className="hover:bg-base-50 transition-colors">
+                                <td>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-lg flex-shrink-0">
+                                      {item.images?.[0]
+                                        ? <img src={item.images[0]} className="w-full h-full object-cover rounded-lg" alt="" />
+                                        : '📦'}
+                                    </div>
+                                    <span className="font-semibold">{item.title}</span>
+                                  </div>
+                                </td>
+                                <td className="text-base-content/70">{item.category}</td>
+                                <td className="font-semibold text-primary">৳{item.dailyFee}</td>
+                                <td>
+                                  <div className={`badge ${item.available ? 'badge-success' : 'badge-error'}`}>
+                                    {item.available ? 'Available' : 'Unavailable'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="flex gap-2">
+                                    <button onClick={() => navigate(`/items/${item._id}/edit`)} className="btn btn-xs btn-outline btn-primary">Edit</button>
+                                    <button onClick={() => handleDeleteItem(item._id)} className="btn btn-xs btn-outline btn-error">Delete</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
 
-                                {myItems.length === 0 ? (
-                                    <div className="card bg-base-100 shadow-md p-12 text-center">
-                                        <p className="text-2xl text-base-content/60 mb-4">No items listed yet</p>
-                                        <p className="text-base-content/50">Start sharing your items to earn money!</p>
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto bg-base-100 rounded-lg shadow-md">
-                                        <table className="table w-full">
-                                            <thead>
-                                                <tr className="bg-base-200">
-                                                    <th>Title</th>
-                                                    <th>Category</th>
-                                                    <th>Daily Fee</th>
-                                                    <th>Status</th>
-                                                    <th>Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {myItems.map((item) => (
-                                                    <tr key={item.id} className="hover:bg-base-200">
-                                                        <td className="font-semibold">{item.title}</td>
-                                                        <td>{item.category}</td>
-                                                        <td>${item.dailyFee}</td>
-                                                        <td>
-                                                            <div
-                                                                className={`badge ${item.available ? 'badge-success' : 'badge-error'
-                                                                    }`}
-                                                            >
-                                                                {item.available ? 'Available' : 'Not Available'}
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                onClick={() => handleEditItem(item)}
-                                                                className="btn btn-xs btn-primary mr-2"
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteItem(item.id)}
-                                                                className="btn btn-xs btn-error"
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
+                      {/* Mobile cards */}
+                      <div className="md:hidden space-y-3">
+                        {myItems.map((item) => (
+                          <div key={item._id} className="card bg-base-100 shadow-sm border border-base-200 p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-semibold">{item.title}</h3>
+                              <div className={`badge badge-sm ${item.available ? 'badge-success' : 'badge-error'}`}>
+                                {item.available ? 'Available' : 'Unavailable'}
+                              </div>
                             </div>
-                        )}
-
-                        {/* My Requests Tab */}
-                        {activeTab === 'requests' && (
-                            <div>
-                                {myRequests.length === 0 ? (
-                                    <div className="card bg-base-100 shadow-md p-12 text-center">
-                                        <p className="text-2xl text-base-content/60 mb-4">No requests yet</p>
-                                        <p className="text-base-content/50">Browse items and send requests to lenders</p>
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto bg-base-100 rounded-lg shadow-md">
-                                        <table className="table w-full">
-                                            <thead>
-                                                <tr className="bg-base-200">
-                                                    <th>Item</th>
-                                                    <th>Lender</th>
-                                                    <th>Dates</th>
-                                                    <th>Total Fee</th>
-                                                    <th>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {myRequests.map((req) => (
-                                                    <tr key={req.id} className="hover:bg-base-200">
-                                                        <td className="font-semibold">{req.item?.title}</td>
-                                                        <td>{req.lender?.name}</td>
-                                                        <td className="text-sm">
-                                                            {new Date(req.startDate).toLocaleDateString()} -{' '}
-                                                            {new Date(req.endDate).toLocaleDateString()}
-                                                        </td>
-                                                        <td>${req.totalFee}</td>
-                                                        <td>
-                                                            <div
-                                                                className={`badge ${req.status === 'accepted'
-                                                                    ? 'badge-success'
-                                                                    : req.status === 'rejected'
-                                                                        ? 'badge-error'
-                                                                        : 'badge-warning'
-                                                                    }`}
-                                                            >
-                                                                {req.status}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
+                            <p className="text-sm text-base-content/60 mb-3">{item.category} · ৳{item.dailyFee}/day</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => navigate(`/items/${item._id}/edit`)} className="btn btn-xs btn-outline btn-primary flex-1">Edit</button>
+                              <button onClick={() => handleDeleteItem(item._id)} className="btn btn-xs btn-outline btn-error flex-1">Delete</button>
                             </div>
-                        )}
-
-                        {/* Incoming Requests Tab */}
-                        {activeTab === 'incoming' && (
-                            <div>
-                                {incomingRequests.length === 0 ? (
-                                    <div className="card bg-base-100 shadow-md p-12 text-center">
-                                        <p className="text-2xl text-base-content/60 mb-4">No incoming requests</p>
-                                        <p className="text-base-content/50">List items to receive borrow requests</p>
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto bg-base-100 rounded-lg shadow-md">
-                                        <table className="table w-full">
-                                            <thead>
-                                                <tr className="bg-base-200">
-                                                    <th>Borrower</th>
-                                                    <th>Item</th>
-                                                    <th>Dates</th>
-                                                    <th>Total Fee</th>
-                                                    <th>Status</th>
-                                                    <th>Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {incomingRequests.map((req) => (
-                                                    <tr key={req.id} className="hover:bg-base-200">
-                                                        <td className="font-semibold">{req.borrower?.name}</td>
-                                                        <td>{req.item?.title}</td>
-                                                        <td className="text-sm">
-                                                            {new Date(req.startDate).toLocaleDateString()} -{' '}
-                                                            {new Date(req.endDate).toLocaleDateString()}
-                                                        </td>
-                                                        <td>${req.totalFee}</td>
-                                                        <td>
-                                                            <div
-                                                                className={`badge ${req.status === 'accepted'
-                                                                    ? 'badge-success'
-                                                                    : req.status === 'rejected'
-                                                                        ? 'badge-error'
-                                                                        : 'badge-warning'
-                                                                    }`}
-                                                            >
-                                                                {req.status}
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            {req.status === 'pending' && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => handleRequestAction(req.id, 'accepted')}
-                                                                        className="btn btn-xs btn-success mr-2"
-                                                                    >
-                                                                        Accept
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleRequestAction(req.id, 'rejected')}
-                                                                        className="btn btn-xs btn-error"
-                                                                    >
-                                                                        Reject
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                          </div>
+                        ))}
+                      </div>
                     </>
-                )}
-            </div>
-
-            {/* Add/Edit Item Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="card bg-base-100 shadow-xl w-full max-w-md">
-                        <div className="card-body">
-                            <h2 className="card-title">
-                                {editingItem ? 'Edit Item' : 'Add New Item'}
-                            </h2>
-
-                            <form onSubmit={handleSubmitForm} className="space-y-4 mt-4">
-                                <div>
-                                    <label className="label">
-                                        <span className="label-text font-semibold">Title *</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="title"
-                                        value={formData.title}
-                                        onChange={handleFormChange}
-                                        placeholder="Item title"
-                                        className={`input input-bordered w-full ${formErrors.title ? 'input-error' : ''
-                                            }`}
-                                    />
-                                    {formErrors.title && (
-                                        <span className="text-error text-sm">{formErrors.title}</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="label">
-                                        <span className="label-text font-semibold">Description</span>
-                                    </label>
-                                    <textarea
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleFormChange}
-                                        placeholder="Describe your item"
-                                        className="textarea textarea-bordered w-full"
-                                        rows="3"
-                                    ></textarea>
-                                </div>
-
-                                <div>
-                                    <label className="label">
-                                        <span className="label-text font-semibold">Category *</span>
-                                    </label>
-                                    <select
-                                        name="category"
-                                        value={formData.category}
-                                        onChange={handleFormChange}
-                                        className={`select select-bordered w-full ${formErrors.category ? 'select-error' : ''
-                                            }`}
-                                    >
-                                        {categories.map((cat) => (
-                                            <option key={cat} value={cat}>
-                                                {cat}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {formErrors.category && (
-                                        <span className="text-error text-sm">{formErrors.category}</span>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="label">
-                                            <span className="label-text font-semibold">Daily Fee *</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="dailyFee"
-                                            value={formData.dailyFee}
-                                            onChange={handleFormChange}
-                                            placeholder="0.00"
-                                            step="0.01"
-                                            className={`input input-bordered w-full ${formErrors.dailyFee ? 'input-error' : ''
-                                                }`}
-                                        />
-                                        {formErrors.dailyFee && (
-                                            <span className="text-error text-sm">{formErrors.dailyFee}</span>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="label">
-                                            <span className="label-text font-semibold">Deposit *</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="deposit"
-                                            value={formData.deposit}
-                                            onChange={handleFormChange}
-                                            placeholder="0.00"
-                                            step="0.01"
-                                            className={`input input-bordered w-full ${formErrors.deposit ? 'input-error' : ''
-                                                }`}
-                                        />
-                                        {formErrors.deposit && (
-                                            <span className="text-error text-sm">{formErrors.deposit}</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="label">
-                                        <span className="label-text font-semibold">Location</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="location"
-                                        value={formData.location}
-                                        onChange={handleFormChange}
-                                        placeholder="Item location"
-                                        className="input input-bordered w-full"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="label cursor-pointer">
-                                        <span className="label-text font-semibold">Available for borrowing</span>
-                                        <input
-                                            type="checkbox"
-                                            name="available"
-                                            checked={formData.available}
-                                            onChange={handleFormChange}
-                                            className="checkbox"
-                                        />
-                                    </label>
-                                </div>
-
-                                <div className="card-actions justify-between mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={handleCloseModal}
-                                        className="btn btn-ghost"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button type="submit" className="btn btn-primary">
-                                        {editingItem ? 'Update Item' : 'Add Item'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                  )}
                 </div>
-            )}
-        </div>
-    );
+              )}
+
+              {/* My Requests */}
+              {activeTab === 'requests' && (
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">My Requests</h2>
+                  <div className="flex gap-2 mb-6 flex-wrap">
+                    {['All', 'Pending', 'Accepted', 'Rejected'].map((f) => (
+                      <button key={f} onClick={() => setRequestFilter(f)}
+                        className={`btn btn-sm rounded-full ${requestFilter === f ? 'btn-primary' : 'btn-ghost'}`}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                  {filteredRequests.length === 0 ? (
+                    emptyState('📋', 'Nothing here yet', 'Browse items and send requests to lenders',
+                      <a href="/browse" className="btn btn-primary rounded-full">Browse Items</a>
+                    )
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredRequests.map((req) => (
+                        <div key={req._id} className="card bg-base-100 shadow-sm border border-base-200">
+                          <div className="card-body p-4 flex-row items-center gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-2xl flex-shrink-0">📦</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{req.item?.title}</p>
+                              <p className="text-sm text-base-content/60">Lender: {req.lender?.name}</p>
+                              <p className="text-xs text-base-content/50">
+                                {new Date(req.startDate).toLocaleDateString()} – {new Date(req.endDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <div className={`badge ${statusBadge(req.status)}`}>{req.status}</div>
+                              <span className="text-sm font-semibold text-primary">৳{req.totalFee}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Incoming Requests */}
+              {activeTab === 'incoming' && (
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">Incoming Requests</h2>
+                  <div className="flex gap-2 mb-6 flex-wrap">
+                    {['All', 'Pending', 'Accepted', 'Rejected'].map((f) => (
+                      <button key={f} onClick={() => setRequestFilter(f)}
+                        className={`btn btn-sm rounded-full ${requestFilter === f ? 'btn-primary' : 'btn-ghost'}`}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                  {filteredIncoming.length === 0 ? (
+                    emptyState('📬', 'No incoming requests', 'List items to receive borrow requests',
+                      <button onClick={() => setActiveTab('listings')} className="btn btn-primary rounded-full">Go to My Listings</button>
+                    )
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredIncoming.map((req) => (
+                        <div key={req._id} className="card bg-base-100 shadow-sm border border-base-200">
+                          <div className="card-body p-4 flex-row items-center gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-2xl flex-shrink-0">📦</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{req.item?.title}</p>
+                              <p className="text-sm text-base-content/60">Borrower: {req.borrower?.name}</p>
+                              <p className="text-xs text-base-content/50">
+                                {new Date(req.startDate).toLocaleDateString()} – {new Date(req.endDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className={`badge ${statusBadge(req.status)}`}>{req.status}</div>
+                              <span className="text-sm font-semibold text-primary">৳{req.totalFee}</span>
+                              {req.status === 'pending' && (
+                                <div className="flex gap-1">
+                                  <button onClick={() => handleRequestAction(req._id, 'accepted')} className="btn btn-success btn-xs">Accept</button>
+                                  <button onClick={() => handleRequestAction(req._id, 'rejected')} className="btn btn-error btn-outline btn-xs">Reject</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Profile */}
+              {activeTab === 'profile' && (
+                <div>
+                  <h2 className="text-2xl font-bold mb-6">Profile</h2>
+                  <div className="card bg-base-100 shadow-sm border border-base-200 max-w-md">
+                    <div className="card-body p-6">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="avatar placeholder">
+                          <div className="bg-primary text-primary-content rounded-full w-16">
+                            <span className="text-2xl font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold">{user?.name}</h3>
+                          <p className="text-base-content/60">{user?.email}</p>
+                        </div>
+                      </div>
+                      <div className="divider"></div>
+                      <p className="text-sm text-base-content/50 text-center">Profile editing coming soon</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
 }
