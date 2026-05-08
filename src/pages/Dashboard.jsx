@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../utils/api';
@@ -18,19 +18,47 @@ const emptyState = (emoji, heading, sub, action) => (
   </div>
 );
 
+const userInitial = (name) => name?.charAt(0)?.toUpperCase() || 'U';
+
+const ProfileAvatar = ({ user, size = 'w-12', textSize = 'text-lg' }) => (
+  <div className={`avatar ${user?.avatar ? '' : 'placeholder'}`}>
+    {user?.avatar ? (
+      <div className={`${size} rounded-full ring ring-primary/20 ring-offset-2 ring-offset-base-100`}>
+        <img src={user.avatar} alt={user?.name || 'User'} />
+      </div>
+    ) : (
+      <div className={`bg-primary text-primary-content rounded-full ${size}`}>
+        <span className={`${textSize} font-bold`}>{userInitial(user?.name)}</span>
+      </div>
+    )}
+  </div>
+);
+
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fileInputRef = useRef(null);
 
-  const [activeTab, setActiveTab] = useState('listings');
+  const requestedTab = searchParams.get('tab');
+  const activeTab = ['listings', 'requests', 'incoming', 'profile'].includes(requestedTab) ? requestedTab : 'listings';
   const [myItems, setMyItems] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [requestFilter, setRequestFilter] = useState('All');
+  const [profileForm, setProfileForm] = useState({
+    name: user?.name || '',
+    phone: user?.phone || '',
+    location: user?.location || '',
+    bio: user?.bio || '',
+    avatar: user?.avatar || '',
+  });
 
   const loadData = useCallback(async () => {
+    if (activeTab === 'profile') return;
     setLoading(true);
     try {
       if (activeTab === 'listings') {
@@ -50,7 +78,23 @@ export default function Dashboard() {
     }
   }, [activeTab, addToast]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    Promise.resolve().then(loadData);
+  }, [loadData]);
+
+  useEffect(() => {
+    const loadProfileStats = async () => {
+      if (activeTab !== 'profile' || myItems.length > 0) return;
+      try {
+        const res = await api.get('/items/my');
+        setMyItems(res.data || []);
+      } catch {
+        // Keep profile editing available even if listing stats cannot load.
+      }
+    };
+
+    loadProfileStats();
+  }, [activeTab, myItems.length]);
 
   const handleDeleteItem = async (itemId) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
@@ -70,6 +114,59 @@ export default function Dashboard() {
       loadData();
     } catch {
       addToast('Failed to update request', 'error');
+    }
+  };
+
+  const handleTabChange = (tab) => {
+    setSearchParams(tab === 'listings' ? {} : { tab });
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAvatarSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addToast('Please choose an image file', 'error');
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      addToast('Profile picture must be under 1 MB', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileForm((prev) => ({ ...prev, avatar: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    if (!profileForm.name.trim()) {
+      addToast('Name is required', 'error');
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      const res = await api.put('/auth/profile', {
+        name: profileForm.name,
+        phone: profileForm.phone,
+        location: profileForm.location,
+        bio: profileForm.bio,
+        avatar: profileForm.avatar,
+      });
+      updateUser(res.data.user);
+      addToast('Profile updated successfully!', 'success');
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Failed to update profile', 'error');
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -94,11 +191,7 @@ export default function Dashboard() {
         {/* Sidebar */}
         <aside className="hidden md:flex flex-col w-64 bg-base-100 border-r border-base-200 min-h-screen p-4 sticky top-16 self-start">
           <div className="flex items-center gap-3 p-3 mb-4">
-            <div className="avatar placeholder">
-              <div className="bg-primary text-primary-content rounded-full w-12">
-                <span className="text-lg font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
-              </div>
-            </div>
+            <ProfileAvatar user={user} />
             <div className="min-w-0">
               <p className="font-semibold truncate">{user?.name}</p>
               <p className="text-xs text-base-content/50 truncate">{user?.email}</p>
@@ -109,7 +202,7 @@ export default function Dashboard() {
             {navItems.map((item) => (
               <button
                 key={item.key}
-                onClick={() => setActiveTab(item.key)}
+                onClick={() => handleTabChange(item.key)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${
                   activeTab === item.key ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content'
                 }`}
@@ -136,7 +229,7 @@ export default function Dashboard() {
             {navItems.map((item) => (
               <button
                 key={item.key}
-                onClick={() => setActiveTab(item.key)}
+                onClick={() => handleTabChange(item.key)}
                 className={`btn btn-sm flex-shrink-0 rounded-full transition-all duration-200 ${
                   activeTab === item.key ? 'btn-primary' : 'btn-ghost'
                 }`}
@@ -291,7 +384,7 @@ export default function Dashboard() {
                   </div>
                   {filteredIncoming.length === 0 ? (
                     emptyState('📬', 'No incoming requests', 'List items to receive borrow requests',
-                      <button onClick={() => setActiveTab('listings')} className="btn btn-primary rounded-full">Go to My Listings</button>
+                      <button onClick={() => handleTabChange('listings')} className="btn btn-primary rounded-full">Go to My Listings</button>
                     )
                   ) : (
                     <div className="space-y-3">
@@ -326,24 +419,156 @@ export default function Dashboard() {
 
               {/* Profile */}
               {activeTab === 'profile' && (
-                <div>
-                  <h2 className="text-2xl font-bold mb-6">Profile</h2>
-                  <div className="card bg-base-100 shadow-sm border border-base-200 max-w-md">
-                    <div className="card-body p-6">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="avatar placeholder">
-                          <div className="bg-primary text-primary-content rounded-full w-16">
-                            <span className="text-2xl font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-primary mb-1">Account settings</p>
+                      <h2 className="text-2xl font-bold">Profile</h2>
+                      <p className="text-base-content/60 mt-1">Keep your public lending profile polished and trustworthy.</p>
+                    </div>
+                    <div className="badge badge-success badge-outline w-fit">Verified account</div>
+                  </div>
+
+                  <div className="grid lg:grid-cols-[360px_1fr] gap-6 items-start">
+                    <section className="card bg-base-100 shadow-sm border border-base-200">
+                      <div className="card-body p-6 items-center text-center">
+                        <div className={`avatar ${profileForm.avatar ? '' : 'placeholder'} mb-2`}>
+                          {profileForm.avatar ? (
+                            <div className="w-32 rounded-full ring ring-primary/20 ring-offset-4 ring-offset-base-100">
+                              <img src={profileForm.avatar} alt={profileForm.name || 'Profile preview'} />
+                            </div>
+                          ) : (
+                            <div className="bg-primary text-primary-content rounded-full w-32">
+                              <span className="text-4xl font-bold">{userInitial(profileForm.name)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="text-xl font-bold">{profileForm.name || user?.name}</h3>
+                        <p className="text-sm text-base-content/60 break-all">{user?.email}</p>
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarSelect}
+                          className="hidden"
+                        />
+                        <div className="grid grid-cols-2 gap-2 w-full mt-4">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="btn btn-primary btn-sm"
+                          >
+                            Upload Photo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((prev) => ({ ...prev, avatar: '' }))}
+                            className="btn btn-outline btn-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <p className="text-xs text-base-content/50 mt-2">JPG, PNG, or WEBP up to 1 MB.</p>
+
+                        <div className="divider"></div>
+                        <div className="grid grid-cols-3 gap-3 w-full">
+                          <div className="rounded-xl bg-base-200 p-3">
+                            <p className="text-lg font-bold">{myItems.length}</p>
+                            <p className="text-xs text-base-content/60">Listings</p>
+                          </div>
+                          <div className="rounded-xl bg-base-200 p-3">
+                            <p className="text-lg font-bold">{user?.rating || 0}</p>
+                            <p className="text-xs text-base-content/60">Rating</p>
+                          </div>
+                          <div className="rounded-xl bg-base-200 p-3">
+                            <p className="text-lg font-bold">{user?.totalReviews || 0}</p>
+                            <p className="text-xs text-base-content/60">Reviews</p>
                           </div>
                         </div>
-                        <div>
-                          <h3 className="text-xl font-bold">{user?.name}</h3>
-                          <p className="text-base-content/60">{user?.email}</p>
+                      </div>
+                    </section>
+
+                    <form onSubmit={handleProfileSubmit} className="card bg-base-100 shadow-sm border border-base-200">
+                      <div className="card-body p-6">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <div>
+                            <h3 className="text-xl font-bold">Personal information</h3>
+                            <p className="text-sm text-base-content/60">This information helps borrowers and lenders recognize you.</p>
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="form-control">
+                            <label className="label"><span className="label-text font-medium">Full name</span></label>
+                            <input
+                              type="text"
+                              name="name"
+                              value={profileForm.name}
+                              onChange={handleProfileChange}
+                              className="input input-bordered w-full focus:ring-2 ring-primary/30"
+                              placeholder="Your full name"
+                              maxLength={80}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label"><span className="label-text font-medium">Email</span></label>
+                            <input
+                              type="email"
+                              value={user?.email || ''}
+                              className="input input-bordered w-full bg-base-200 text-base-content/70"
+                              disabled
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label"><span className="label-text font-medium">Phone</span></label>
+                            <input
+                              type="tel"
+                              name="phone"
+                              value={profileForm.phone}
+                              onChange={handleProfileChange}
+                              className="input input-bordered w-full focus:ring-2 ring-primary/30"
+                              placeholder="+880 1XXX XXXXXX"
+                              maxLength={30}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label"><span className="label-text font-medium">Location</span></label>
+                            <input
+                              type="text"
+                              name="location"
+                              value={profileForm.location}
+                              onChange={handleProfileChange}
+                              className="input input-bordered w-full focus:ring-2 ring-primary/30"
+                              placeholder="City or neighborhood"
+                              maxLength={80}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-control mt-4">
+                          <label className="label">
+                            <span className="label-text font-medium">Bio</span>
+                            <span className="label-text-alt text-base-content/50">{profileForm.bio.length}/280</span>
+                          </label>
+                          <textarea
+                            name="bio"
+                            value={profileForm.bio}
+                            onChange={handleProfileChange}
+                            className="textarea textarea-bordered min-h-32 focus:ring-2 ring-primary/30"
+                            placeholder="Share what you lend, what you borrow, or how people can coordinate with you."
+                            maxLength={280}
+                          />
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6">
+                          <p className="text-sm text-base-content/50">Changes update your profile across ShareStuff immediately.</p>
+                          <button type="submit" disabled={savingProfile} className="btn btn-primary min-w-36">
+                            {savingProfile ? <span className="loading loading-spinner loading-sm"></span> : 'Save Changes'}
+                          </button>
                         </div>
                       </div>
-                      <div className="divider"></div>
-                      <p className="text-sm text-base-content/50 text-center">Profile editing coming soon</p>
-                    </div>
+                    </form>
                   </div>
                 </div>
               )}

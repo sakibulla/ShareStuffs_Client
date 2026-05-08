@@ -64,10 +64,16 @@ export default function Navbar() {
             <div className="navbar-end gap-2">
               {isAuthenticated ? (
                 <div className="dropdown dropdown-end">
-                  <label tabIndex={0} className="btn btn-ghost btn-circle avatar placeholder">
-                    <div className="bg-primary text-primary-content rounded-full w-9">
-                      <span className="text-sm font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
-                    </div>
+                  <label tabIndex={0} className={`btn btn-ghost btn-circle avatar ${user?.avatar ? '' : 'placeholder'}`}>
+                    {user?.avatar ? (
+                      <div className="rounded-full w-9 ring ring-primary/20 ring-offset-2 ring-offset-base-100">
+                        <img src={user.avatar} alt={user?.name || 'User'} />
+                      </div>
+                    ) : (
+                      <div className="bg-primary text-primary-content rounded-full w-9">
+                        <span className="text-sm font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                      </div>
+                    )}
                   </label>
                   <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow-xl bg-base-100 rounded-2xl w-52 border border-base-200 mt-2">
                     <li className="menu-title px-3 py-2">
@@ -78,6 +84,11 @@ export default function Navbar() {
                     <li>
                       <Link to="/dashboard" className="transition-all duration-200">
                         📦 Dashboard
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/dashboard?tab=profile" className="transition-all duration-200">
+                        👤 Profile
                       </Link>
                     </li>
                     <li>
@@ -126,11 +137,18 @@ export default function Navbar() {
                 </li>
               ))}
               {isAuthenticated && (
-                <li>
-                  <Link to="/dashboard" className="rounded-xl transition-all duration-200">
-                    Dashboard
-                  </Link>
-                </li>
+                <>
+                  <li>
+                    <Link to="/dashboard" className="rounded-xl transition-all duration-200">
+                      Dashboard
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/dashboard?tab=profile" className="rounded-xl transition-all duration-200">
+                      Profile
+                    </Link>
+                  </li>
+                </>
               )}
             </ul>
             <div className="mt-auto">

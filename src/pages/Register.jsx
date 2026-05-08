@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../config/firebase';
 import api from '../utils/api';
 
 export default function Register() {
@@ -51,6 +53,34 @@ export default function Register() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const idToken = await user.getIdToken();
+
+      const response = await api.post('/auth/firebase-login', {
+        name: user.displayName,
+        email: user.email,
+        firebaseUID: user.uid,
+        avatar: user.photoURL,
+        idToken,
+      });
+
+      const { token, user: userData } = response.data;
+      login(userData, token);
+      addToast('Login successful!', 'success');
+      navigate('/browse');
+    } catch (error) {
+      console.error('Google login error:', error);
+      const message = error.response?.data?.message || error.message || 'Google login failed';
+      addToast(message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex fade-in">
       {/* Left panel - desktop only */}
@@ -85,11 +115,14 @@ export default function Register() {
           <h1 className="text-3xl font-bold mb-1">Join ShareStuff 🎉</h1>
           <p className="text-base-content/60 mb-8">Create your free account today</p>
 
-          <button className="btn btn-outline w-full gap-2 mb-4 transition-all duration-200 active:scale-95">
+          <button
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="btn btn-outline w-full gap-2 mb-4 transition-all duration-200 active:scale-95"
+          >
             <span className="font-bold text-blue-500">G</span>
-            Sign up with Google
+            Sign in with Google
           </button>
-
           <div className="divider text-base-content/40 text-sm">or continue with email</div>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
