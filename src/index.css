@@ -1,9 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "daisyui/daisyui.css";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 * {
   font-family: 'Inter', sans-serif;
+}
+
+html {
+  background: var(--color-base-200);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --color-base-100: oklch(99% 0.004 250);
+  --color-base-200: oklch(96% 0.011 247);
+  --color-base-300: oklch(90% 0.018 248);
+  --color-base-content: oklch(24% 0.036 260);
+  --color-primary: oklch(55% 0.132 187);
+  --color-primary-content: oklch(98% 0.012 187);
+  --color-secondary: oklch(48% 0.15 267);
+  --color-secondary-content: oklch(98% 0.01 267);
+  --color-accent: oklch(67% 0.17 45);
+  --color-accent-content: oklch(17% 0.04 45);
+  --color-neutral: oklch(30% 0.034 260);
+  --color-neutral-content: oklch(96% 0.008 260);
+  --color-info: oklch(62% 0.14 235);
+  --color-info-content: oklch(98% 0.01 235);
+  --color-success: oklch(62% 0.145 158);
+  --color-success-content: oklch(98% 0.01 158);
+  --color-warning: oklch(74% 0.16 78);
+  --color-warning-content: oklch(23% 0.05 78);
+  --color-error: oklch(62% 0.19 24);
+  --color-error-content: oklch(98% 0.01 24);
+  --radius-selector: .5rem;
+  --radius-field: .5rem;
+  --radius-box: .5rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-base-100: oklch(20% 0.025 260);
+  --color-base-200: oklch(16% 0.028 264);
+  --color-base-300: oklch(27% 0.032 260);
+  --color-base-content: oklch(93% 0.012 255);
+  --color-primary: oklch(72% 0.135 190);
+  --color-primary-content: oklch(15% 0.026 190);
+  --color-secondary: oklch(76% 0.125 270);
+  --color-secondary-content: oklch(16% 0.03 270);
+  --color-accent: oklch(76% 0.16 48);
+  --color-accent-content: oklch(16% 0.035 48);
+  --color-neutral: oklch(88% 0.011 255);
+  --color-neutral-content: oklch(16% 0.025 260);
+  --color-info: oklch(76% 0.12 232);
+  --color-info-content: oklch(16% 0.03 232);
+  --color-success: oklch(74% 0.14 157);
+  --color-success-content: oklch(16% 0.03 157);
+  --color-warning: oklch(82% 0.14 78);
+  --color-warning-content: oklch(20% 0.045 78);
+  --color-error: oklch(72% 0.17 24);
+  --color-error-content: oklch(17% 0.035 24);
+  --radius-selector: .5rem;
+  --radius-field: .5rem;
+  --radius-box: .5rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, color-mix(in oklch, var(--color-primary) 14%, transparent), transparent 30rem),
+    radial-gradient(circle at top right, color-mix(in oklch, var(--color-secondary) 12%, transparent), transparent 28rem),
+    var(--color-base-200);
+  color: var(--color-base-content);
+}
+
+.brand-gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary) 55%, var(--color-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-surface {
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 16%, transparent), transparent 38%),
+    linear-gradient(315deg, color-mix(in oklch, var(--color-secondary) 14%, transparent), transparent 40%),
+    var(--color-base-100);
+}
+
+.brand-panel {
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in oklch, white 24%, transparent), transparent 12rem),
+    linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+}
+
+.browse-hero {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+}
+
+.item-placeholder {
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)), color-mix(in oklch, var(--color-secondary) 16%, var(--color-base-200)));
 }
 
 @keyframes fadeIn {

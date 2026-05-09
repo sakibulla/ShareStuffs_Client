@@ -189,7 +189,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-base-200 fade-in">
       <div className="max-w-7xl mx-auto flex">
         {/* Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 bg-base-100 border-r border-base-200 min-h-screen p-4 sticky top-16 self-start">
+        <aside className="hidden md:flex flex-col w-64 bg-base-100 border-r border-base-300 min-h-screen p-4 sticky top-16 self-start">
           <div className="flex items-center gap-3 p-3 mb-4">
             <ProfileAvatar user={user} />
             <div className="min-w-0">
@@ -276,10 +276,22 @@ export default function Dashboard() {
                           </thead>
                           <tbody>
                             {myItems.map((item) => (
-                              <tr key={item._id} className="hover:bg-base-50 transition-colors">
+                              <tr
+                                key={item._id}
+                                onClick={() => navigate(`/items/${item._id}`)}
+                                onKeyDown={(e) => {
+                                  if (e.currentTarget !== e.target) return;
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    navigate(`/items/${item._id}`);
+                                  }
+                                }}
+                                tabIndex={0}
+                                className="hover:bg-base-200 transition-colors cursor-pointer focus:outline-none focus-visible:bg-base-200"
+                              >
                                 <td>
                                   <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-lg flex-shrink-0">
+                                    <div className="w-10 h-10 rounded-lg item-placeholder flex items-center justify-center text-lg flex-shrink-0">
                                       {item.images?.[0]
                                         ? <img src={item.images[0]} className="w-full h-full object-cover rounded-lg" alt="" />
                                         : '📦'}
@@ -296,8 +308,24 @@ export default function Dashboard() {
                                 </td>
                                 <td>
                                   <div className="flex gap-2">
-                                    <button onClick={() => navigate(`/items/${item._id}/edit`)} className="btn btn-xs btn-outline btn-primary">Edit</button>
-                                    <button onClick={() => handleDeleteItem(item._id)} className="btn btn-xs btn-outline btn-error">Delete</button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/items/${item._id}/edit`);
+                                      }}
+                                      className="btn btn-xs btn-outline btn-primary"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteItem(item._id);
+                                      }}
+                                      className="btn btn-xs btn-outline btn-error"
+                                    >
+                                      Delete
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -309,7 +337,20 @@ export default function Dashboard() {
                       {/* Mobile cards */}
                       <div className="md:hidden space-y-3">
                         {myItems.map((item) => (
-                          <div key={item._id} className="card bg-base-100 shadow-sm border border-base-200 p-4">
+                          <div
+                            key={item._id}
+                            onClick={() => navigate(`/items/${item._id}`)}
+                            onKeyDown={(e) => {
+                              if (e.currentTarget !== e.target) return;
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                navigate(`/items/${item._id}`);
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            className="card bg-base-100 shadow-sm border border-base-300 p-4 cursor-pointer transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200"
+                          >
                             <div className="flex items-center justify-between mb-2">
                               <h3 className="font-semibold">{item.title}</h3>
                               <div className={`badge badge-sm ${item.available ? 'badge-success' : 'badge-error'}`}>
@@ -318,8 +359,24 @@ export default function Dashboard() {
                             </div>
                             <p className="text-sm text-base-content/60 mb-3">{item.category} · ৳{item.dailyFee}/day</p>
                             <div className="flex gap-2">
-                              <button onClick={() => navigate(`/items/${item._id}/edit`)} className="btn btn-xs btn-outline btn-primary flex-1">Edit</button>
-                              <button onClick={() => handleDeleteItem(item._id)} className="btn btn-xs btn-outline btn-error flex-1">Delete</button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/items/${item._id}/edit`);
+                                }}
+                                className="btn btn-xs btn-outline btn-primary flex-1"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteItem(item._id);
+                                }}
+                                className="btn btn-xs btn-outline btn-error flex-1"
+                              >
+                                Delete
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -348,9 +405,9 @@ export default function Dashboard() {
                   ) : (
                     <div className="space-y-3">
                       {filteredRequests.map((req) => (
-                        <div key={req._id} className="card bg-base-100 shadow-sm border border-base-200">
+                        <div key={req._id} className="card bg-base-100 shadow-sm border border-base-300">
                           <div className="card-body p-4 flex-row items-center gap-4">
-                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-2xl flex-shrink-0">📦</div>
+                            <div className="w-14 h-14 rounded-xl item-placeholder flex items-center justify-center text-2xl flex-shrink-0">📦</div>
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold truncate">{req.item?.title}</p>
                               <p className="text-sm text-base-content/60">Lender: {req.lender?.name}</p>
@@ -389,9 +446,9 @@ export default function Dashboard() {
                   ) : (
                     <div className="space-y-3">
                       {filteredIncoming.map((req) => (
-                        <div key={req._id} className="card bg-base-100 shadow-sm border border-base-200">
+                        <div key={req._id} className="card bg-base-100 shadow-sm border border-base-300">
                           <div className="card-body p-4 flex-row items-center gap-4">
-                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-2xl flex-shrink-0">📦</div>
+                            <div className="w-14 h-14 rounded-xl item-placeholder flex items-center justify-center text-2xl flex-shrink-0">📦</div>
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold truncate">{req.item?.title}</p>
                               <p className="text-sm text-base-content/60">Borrower: {req.borrower?.name}</p>
@@ -430,7 +487,7 @@ export default function Dashboard() {
                   </div>
 
                   <div className="grid lg:grid-cols-[360px_1fr] gap-6 items-start">
-                    <section className="card bg-base-100 shadow-sm border border-base-200">
+                    <section className="card bg-base-100 shadow-sm border border-base-300">
                       <div className="card-body p-6 items-center text-center">
                         <div className={`avatar ${profileForm.avatar ? '' : 'placeholder'} mb-2`}>
                           {profileForm.avatar ? (
@@ -489,7 +546,7 @@ export default function Dashboard() {
                       </div>
                     </section>
 
-                    <form onSubmit={handleProfileSubmit} className="card bg-base-100 shadow-sm border border-base-200">
+                    <form onSubmit={handleProfileSubmit} className="card bg-base-100 shadow-sm border border-base-300">
                       <div className="card-body p-6">
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <div>

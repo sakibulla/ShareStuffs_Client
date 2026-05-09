@@ -12,9 +12,17 @@ const categoryEmoji = {
 export default function ItemCard({ item }) {
   const imageUrl = item.images?.[0];
   const emoji = categoryEmoji[item.category] || '📦';
+  const itemId = item._id || item.id;
+  const ownerName = item.owner?.name || 'Unknown';
+  const ownerAvatar = item.owner?.avatar;
+  const ownerInitial = ownerName.charAt(0).toUpperCase();
 
   return (
-    <div className="card bg-base-100 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden group">
+    <Link
+      to={`/items/${itemId}`}
+      className="card bg-base-100 border border-base-300 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden group text-base-content no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200"
+      aria-label={`View details for ${item.title}`}
+    >
       {/* Image area */}
       <div className="relative h-48 overflow-hidden">
         {imageUrl ? (
@@ -26,7 +34,7 @@ export default function ItemCard({ item }) {
           />
         ) : null}
         <div
-          className={`w-full h-full bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-5xl ${imageUrl ? 'hidden' : 'flex'}`}
+          className={`w-full h-full item-placeholder flex items-center justify-center text-5xl ${imageUrl ? 'hidden' : 'flex'}`}
         >
           {emoji}
         </div>
@@ -38,7 +46,7 @@ export default function ItemCard({ item }) {
 
       {/* Card body */}
       <div className="card-body p-4">
-        <h2 className="font-semibold text-base line-clamp-1">{item.title}</h2>
+        <h2 className="font-semibold text-base line-clamp-1 transition-colors group-hover:text-primary">{item.title}</h2>
         <p className="text-xs text-base-content/60 flex items-center gap-1">
           <span>📍</span> {item.location || 'Location not set'}
         </p>
@@ -54,22 +62,25 @@ export default function ItemCard({ item }) {
 
         {/* Footer */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <div className="avatar placeholder">
-              <div className="bg-primary/20 text-primary rounded-full w-6 h-6">
-                <span className="text-xs font-bold">{item.owner?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
-              </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className={`avatar flex-shrink-0 ${ownerAvatar ? '' : 'placeholder'}`}>
+              {ownerAvatar ? (
+                <div className="w-7 rounded-full ring ring-primary/20 ring-offset-1 ring-offset-base-100">
+                  <img src={ownerAvatar} alt={ownerName} />
+                </div>
+              ) : (
+                <div className="bg-primary/20 text-primary rounded-full w-7">
+                  <span className="text-xs font-bold">{ownerInitial}</span>
+                </div>
+              )}
             </div>
-            <span className="text-xs text-base-content/70 truncate max-w-[80px]">{item.owner?.name || 'Unknown'}</span>
+            <span className="text-xs text-base-content/70 truncate max-w-[90px]">{ownerName}</span>
           </div>
-          <Link
-            to={`/items/${item._id}`}
-            className="btn btn-primary btn-xs rounded-full transition-all duration-200 active:scale-95"
-          >
+          <span className="btn btn-primary btn-xs rounded-full transition-all duration-200 active:scale-95 group-hover:btn-secondary">
             View Details
-          </Link>
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

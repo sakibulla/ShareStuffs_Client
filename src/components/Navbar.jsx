@@ -1,7 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export default function Navbar() {
+export default function Navbar({ theme, onToggleTheme }) {
   const { isAuthenticated, logout, user } = useAuth();
   const navigate = useNavigate();
 
@@ -22,7 +22,7 @@ export default function Navbar() {
         <input id="mobile-drawer" type="checkbox" className="drawer-toggle" />
         <div className="drawer-content flex flex-col">
           {/* Navbar */}
-          <nav className="navbar sticky top-0 z-50 bg-base-100/80 backdrop-blur-md shadow-sm border-b border-base-200">
+          <nav className="navbar sticky top-0 z-50 bg-base-100/85 backdrop-blur-xl shadow-sm border-b border-base-300">
             <div className="navbar-start">
               {/* Hamburger - mobile only */}
               <label htmlFor="mobile-drawer" className="btn btn-ghost md:hidden">
@@ -33,7 +33,7 @@ export default function Navbar() {
               {/* Logo */}
               <Link to="/" className="btn btn-ghost normal-case text-xl font-bold gap-1">
                 <span>🔄</span>
-                <span className="bg-gradient-to-r from-green-600 to-emerald-400 bg-clip-text text-transparent">
+                <span className="brand-gradient-text">
                   ShareStuff
                 </span>
               </Link>
@@ -62,6 +62,15 @@ export default function Navbar() {
 
             {/* Right side */}
             <div className="navbar-end gap-2">
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                className="btn btn-ghost btn-sm btn-circle"
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                <span className="text-base">{theme === 'dark' ? '☀️' : '🌙'}</span>
+              </button>
               {isAuthenticated ? (
                 <div className="dropdown dropdown-end">
                   <label tabIndex={0} className={`btn btn-ghost btn-circle avatar ${user?.avatar ? '' : 'placeholder'}`}>
@@ -75,7 +84,7 @@ export default function Navbar() {
                       </div>
                     )}
                   </label>
-                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow-xl bg-base-100 rounded-2xl w-52 border border-base-200 mt-2">
+                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow-xl bg-base-100 rounded-2xl w-52 border border-base-300 mt-2">
                     <li className="menu-title px-3 py-2">
                       <span className="text-xs text-base-content/50 font-normal">Signed in as</span>
                       <span className="text-sm font-semibold text-base-content truncate">{user?.name}</span>
@@ -115,13 +124,21 @@ export default function Navbar() {
         {/* Mobile drawer sidebar */}
         <div className="drawer-side z-[100]">
           <label htmlFor="mobile-drawer" className="drawer-overlay"></label>
-          <div className="bg-base-100 min-h-full w-72 p-6 flex flex-col gap-4">
+          <div className="bg-base-100 min-h-full w-72 p-6 flex flex-col gap-4 border-r border-base-300">
             <Link to="/" className="text-xl font-bold flex items-center gap-2 mb-4">
               <span>🔄</span>
-              <span className="bg-gradient-to-r from-green-600 to-emerald-400 bg-clip-text text-transparent">
+              <span className="brand-gradient-text">
                 ShareStuff
               </span>
             </Link>
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="btn btn-outline btn-sm justify-start"
+            >
+              <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
             <ul className="menu gap-1 p-0">
               {navLinks.map((link) => (
                 <li key={link.to}>

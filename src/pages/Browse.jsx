@@ -50,15 +50,15 @@ export default function Browse() {
   return (
     <div className="min-h-screen bg-base-200 fade-in">
       {/* Hero bar */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-500 text-white py-12 text-center px-4">
+      <div className="browse-hero text-primary-content py-12 text-center px-4">
         <h1 className="text-4xl font-bold mb-2">Find What You Need</h1>
-        <p className="text-white/80 text-lg">Browse hundreds of items available to borrow nearby</p>
+        <p className="text-primary-content/80 text-lg">Browse hundreds of items available to borrow nearby</p>
       </div>
 
       {/* Search bar overlapping hero */}
       <div className="max-w-2xl mx-auto -mt-6 relative z-10 px-4">
         <form onSubmit={handleSearch}>
-          <div className="card bg-base-100 shadow-xl rounded-2xl">
+          <div className="card bg-base-100 shadow-xl rounded-2xl border border-base-300">
             <div className="card-body p-3 flex-row gap-2">
               <div className="flex items-center flex-1 gap-2 px-2">
                 <span className="text-base-content/40">🔍</span>

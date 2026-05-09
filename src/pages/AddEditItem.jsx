@@ -135,7 +135,7 @@ export default function AddEditItem() {
           <h1 className="text-2xl font-bold">{isEditing ? 'Edit Item' : 'Add New Item'}</h1>
         </div>
 
-        <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card bg-base-100 shadow-sm border border-base-300">
           <div className="card-body p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Title */}
@@ -246,7 +246,7 @@ export default function AddEditItem() {
                 {formData.images.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                     {formData.images.map((url, index) => (
-                      <div key={index} className="relative group rounded-xl overflow-hidden border border-base-200 aspect-square bg-base-200">
+                      <div key={index} className="relative group rounded-xl overflow-hidden border border-base-300 aspect-square bg-base-200">
                         <img
                           src={url}
                           alt={`Image ${index + 1}`}

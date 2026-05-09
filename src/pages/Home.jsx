@@ -32,11 +32,11 @@ export default function Home() {
   return (
     <div className="fade-in">
       {/* Hero Section */}
-      <section className="min-h-screen bg-gradient-to-br from-emerald-50 via-base-100 to-green-50 flex items-center px-4 py-20">
+      <section className="min-h-screen hero-surface flex items-center px-4 py-20">
         <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: Text */}
           <div className="space-y-6">
-            <span className="inline-block bg-emerald-100 text-emerald-700 rounded-full px-4 py-1 text-sm font-medium">
+            <span className="inline-block bg-primary/10 text-primary rounded-full px-4 py-1 text-sm font-medium border border-primary/15">
               🌱 Sustainable Sharing Community
             </span>
             <h1 className="text-5xl lg:text-6xl leading-tight">
@@ -74,8 +74,8 @@ export default function Home() {
 
           {/* Right: Floating card mockup */}
           <div className="hidden lg:flex justify-center items-center">
-            <div className="card bg-base-100 shadow-2xl w-72 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-              <div className="h-44 bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center text-6xl rounded-t-2xl">
+            <div className="card bg-base-100 shadow-2xl border border-base-300 w-72 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+              <div className="h-44 item-placeholder flex items-center justify-center text-6xl rounded-t-xl">
                 🔧
               </div>
               <div className="card-body p-4">
@@ -92,7 +92,7 @@ export default function Home() {
       </section>
 
       {/* Stats Bar */}
-      <section className="bg-primary text-primary-content py-8 px-4">
+      <section className="bg-neutral text-neutral-content py-8 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="stats stats-vertical sm:stats-horizontal w-full bg-transparent shadow-none">
             {[
@@ -101,10 +101,10 @@ export default function Home() {
               { title: 'Happy Borrowers', value: '1,200+', desc: 'Successful borrows' },
               { title: 'Cities', value: '12', desc: 'Across the country' },
             ].map((stat) => (
-              <div key={stat.title} className="stat text-primary-content">
-                <div className="stat-title text-primary-content/70">{stat.title}</div>
+              <div key={stat.title} className="stat text-neutral-content">
+                <div className="stat-title text-neutral-content/70">{stat.title}</div>
                 <div className="stat-value">{stat.value}</div>
-                <div className="stat-desc text-primary-content/60">{stat.desc}</div>
+                <div className="stat-desc text-neutral-content/60">{stat.desc}</div>
               </div>
             ))}
           </div>
@@ -121,7 +121,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
             {steps.map((step, idx) => (
               <div key={step.num} className="flex flex-col items-center text-center relative">
-                <div className="card bg-base-100 border border-base-200 shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-200 w-full p-8">
+                <div className="card bg-base-100 border border-base-300 shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-200 w-full p-8">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-3xl mx-auto mb-4">
                     {step.emoji}
                   </div>
@@ -190,7 +190,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto text-center">
           <div className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
             <span>🔄</span>
-            <span className="bg-gradient-to-r from-green-600 to-emerald-400 bg-clip-text text-transparent">ShareStuff</span>
+            <span className="brand-gradient-text">ShareStuff</span>
           </div>
           <p className="text-base-content/60 text-sm">A peer-to-peer lending platform that brings communities together.</p>
           <p className="text-xs text-base-content/40 mt-4">© 2024 ShareStuff. All rights reserved.</p>

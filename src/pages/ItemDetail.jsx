@@ -84,6 +84,9 @@ export default function ItemDetail() {
 
   const imageUrl = item.images?.[0];
   const emoji = categoryEmoji[item.category] || '📦';
+  const ownerName = item.owner?.name || 'Unknown';
+  const ownerAvatar = item.owner?.avatar;
+  const ownerInitial = ownerName.charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-base-200 py-8 px-4 fade-in">
@@ -112,7 +115,7 @@ export default function ItemDetail() {
                   />
                 ) : null}
                 <div
-                  className={`w-full h-full bg-gradient-to-br from-emerald-100 to-green-200 items-center justify-center text-8xl ${imageUrl ? 'hidden' : 'flex'}`}
+                  className={`w-full h-full item-placeholder items-center justify-center text-8xl ${imageUrl ? 'hidden' : 'flex'}`}
                 >
                   {emoji}
                 </div>
@@ -144,7 +147,7 @@ export default function ItemDetail() {
           {/* Right column */}
           <div className="space-y-4">
             {/* Price card + request form */}
-            <div className="card bg-base-100 border border-base-200 shadow-sm">
+            <div className="card bg-base-100 border border-base-300 shadow-sm">
               <div className="card-body p-6">
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-3xl font-bold text-primary">৳{item.dailyFee}</span>
@@ -221,17 +224,23 @@ export default function ItemDetail() {
             </div>
 
             {/* Owner card */}
-            <div className="card bg-base-100 border border-base-200 shadow-sm">
+            <div className="card bg-base-100 border border-base-300 shadow-sm">
               <div className="card-body p-5">
                 <h3 className="font-semibold text-sm text-base-content/60 mb-3">LISTED BY</h3>
                 <div className="flex items-center gap-3">
-                  <div className="avatar placeholder">
-                    <div className="bg-primary text-primary-content rounded-full w-12">
-                      <span className="text-lg font-bold">{item.owner?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
-                    </div>
+                  <div className={`avatar ${ownerAvatar ? '' : 'placeholder'}`}>
+                    {ownerAvatar ? (
+                      <div className="w-12 rounded-full ring ring-primary/20 ring-offset-2 ring-offset-base-100">
+                        <img src={ownerAvatar} alt={ownerName} />
+                      </div>
+                    ) : (
+                      <div className="bg-primary text-primary-content rounded-full w-12">
+                        <span className="text-lg font-bold">{ownerInitial}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <p className="font-semibold">{item.owner?.name || 'Unknown'}</p>
+                    <p className="font-semibold">{ownerName}</p>
                     <StarRating rating={5} count={12} />
                     <p className="text-xs text-base-content/50 mt-0.5">Member since 2024</p>
                   </div>

@@ -84,16 +84,14 @@ export default function Register() {
   return (
     <div className="min-h-screen flex fade-in">
       {/* Left panel - desktop only */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 to-green-400 relative overflow-hidden flex-col items-center justify-center p-12 text-white">
-        <div className="absolute top-10 left-10 w-40 h-40 bg-white/10 rounded-full opacity-20"></div>
-        <div className="absolute bottom-20 right-10 w-64 h-64 bg-white/10 rounded-full opacity-20"></div>
-        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-white/10 rounded-full opacity-20"></div>
-
+      <div className="hidden lg:flex lg:w-1/2 brand-panel relative overflow-hidden flex-col items-center justify-center p-12 text-primary-content">
+        <div className="absolute inset-x-12 top-16 h-px bg-primary-content/25"></div>
+        <div className="absolute inset-x-12 bottom-16 h-px bg-primary-content/15"></div>
         <div className="relative z-10 text-center">
           <div className="text-5xl font-bold mb-4 flex items-center gap-3 justify-center">
             <span>🔄</span> ShareStuff
           </div>
-          <p className="text-xl text-white/80 mb-10">Join thousands of sharers today</p>
+          <p className="text-xl text-primary-content/80 mb-10">Join thousands of sharers today</p>
           <div className="space-y-4 text-left">
             {[
               'List items and earn extra income',
@@ -101,8 +99,8 @@ export default function Register() {
               'Reduce waste and help the environment',
             ].map((point) => (
               <div key={point} className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">✓</span>
-                <span className="text-white/90">{point}</span>
+                <span className="w-6 h-6 rounded-full bg-primary-content/20 flex items-center justify-center text-sm font-bold">✓</span>
+                <span className="text-primary-content/90">{point}</span>
               </div>
             ))}
           </div>

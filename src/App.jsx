@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
@@ -13,12 +14,26 @@ import Dashboard from './pages/Dashboard';
 import AddEditItem from './pages/AddEditItem';
 
 function App() {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    const savedTheme = window.localStorage.getItem('sharestuff-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    window.localStorage.setItem('sharestuff-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
+
   return (
     <Router>
       <AuthProvider>
         <ToastProvider>
-          <div className="flex flex-col min-h-screen bg-base-200">
-            <Navbar />
+          <div className="flex flex-col min-h-screen bg-base-200 text-base-content">
+            <Navbar theme={theme} onToggleTheme={toggleTheme} />
             <main className="flex-1">
               <Routes>
                 <Route path="/" element={<Home />} />
