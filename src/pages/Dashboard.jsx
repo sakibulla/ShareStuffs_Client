@@ -12,7 +12,7 @@ import { pageTransition, staggerContainer, staggerItem, scaleIn, tapPress } from
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const statusBadge = (status) => {
-  const map = { pending: 'badge-warning', accepted: 'badge-success', rejected: 'badge-error', returned: 'badge-neutral' };
+  const map = { pending: 'badge-warning', accepted: 'badge-success', rejected: 'badge-error', delivered: 'badge-info', returned: 'badge-neutral' };
   return map[status] || 'badge-ghost';
 };
 const paymentBadge = (ps) => ps === 'paid' ? 'badge-success' : 'badge-warning';
@@ -106,6 +106,11 @@ function RequestCard({ req, isLender, reviewedRequestIds, onAction, onPayDeposit
             </div>
           )}
           {isLender && req.status === 'accepted' && (
+            <motion.button whileTap={tapPress} onClick={() => onAction(req._id, 'delivered')} className="btn btn-info btn-xs rounded-lg">
+              Mark Delivered
+            </motion.button>
+          )}
+          {isLender && req.status === 'delivered' && (
             <motion.button whileTap={tapPress} onClick={() => onAction(req._id, 'returned')} className="btn btn-neutral btn-xs rounded-lg">
               Mark Returned
             </motion.button>
@@ -413,7 +418,7 @@ export default function Dashboard() {
   const filteredRequests = requestFilter === 'All' ? myRequests : myRequests.filter((r) => r.status === requestFilter.toLowerCase());
   const filteredIncoming = requestFilter === 'All' ? incomingRequests : incomingRequests.filter((r) => r.status === requestFilter.toLowerCase());
 
-  const filterBtns = ['All', 'Pending', 'Accepted', 'Rejected', 'Returned'];
+  const filterBtns = ['All', 'Pending', 'Accepted', 'Rejected', 'Delivered', 'Returned'];
 
   return (
     <motion.div
