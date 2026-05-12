@@ -2,9 +2,25 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+} from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import api from '../utils/api';
+
+async function firebaseGoogleLogin(auth, provider) {
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (err) {
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+    throw err;
+  }
+}
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -14,33 +30,38 @@ export default function Register() {
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  // Handle redirect result when user comes back from Google
+  // Handle the result when Firebase redirects back to this page
   useEffect(() => {
+    setLoading(true);
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return;
-        const user = result.user;
-        const idToken = await user.getIdToken();
-        const response = await api.post('/auth/firebase-login', {
-          name: user.displayName,
-          email: user.email,
-          firebaseUID: user.uid,
-          avatar: user.photoURL,
-          idToken,
-        });
-        const { token, user: userData } = response.data;
-        login(userData, token);
-        addToast('Account created!', 'success');
-        navigate('/browse');
+        await handleFirebaseUser(result.user);
       })
-      .catch((error) => {
-        if (error.code !== 'auth/no-current-user') {
-          console.error('Redirect result error:', error);
-          addToast(error.response?.data?.message || 'Google login failed', 'error');
+      .catch((err) => {
+        if (err?.code !== 'auth/no-current-user') {
+          console.error('Redirect result error:', err);
+          addToast('Google login failed. Please try again.', 'error');
         }
-      });
+      })
+      .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleFirebaseUser = async (firebaseUser) => {
+    const idToken = await firebaseUser.getIdToken();
+    const response = await api.post('/auth/firebase-login', {
+      name: firebaseUser.displayName,
+      email: firebaseUser.email,
+      firebaseUID: firebaseUser.uid,
+      avatar: firebaseUser.photoURL,
+      idToken,
+    });
+    const { token, user: userData } = response.data;
+    login(userData, token);
+    addToast('Account created!', 'success');
+    navigate('/browse');
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -82,12 +103,16 @@ export default function Register() {
   };
 
   const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
-      // Page redirects to Google — result handled in useEffect above
+      const result = await firebaseGoogleLogin(auth, googleProvider);
+      if (result) {
+        await handleFirebaseUser(result.user);
+      }
     } catch (error) {
       console.error('Google login error:', error);
-      addToast('Google login failed', 'error');
+      addToast(error.response?.data?.message || error.message || 'Google login failed', 'error');
+      setLoading(false);
     }
   };
 
@@ -128,9 +153,13 @@ export default function Register() {
             disabled={loading}
             className="btn btn-outline w-full gap-2 mb-4 transition-all duration-200 active:scale-95"
           >
-            <span className="font-bold text-blue-500">G</span>
+            {loading
+              ? <span className="loading loading-spinner loading-sm" />
+              : <span className="font-bold text-blue-500">G</span>
+            }
             Sign in with Google
           </button>
+
           <div className="divider text-base-content/40 text-sm">or continue with email</div>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
