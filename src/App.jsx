@@ -12,6 +12,8 @@ import Browse from './pages/Browse';
 import ItemDetail from './pages/ItemDetail';
 import Dashboard from './pages/Dashboard';
 import AddEditItem from './pages/AddEditItem';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -62,6 +64,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/payment/success"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentSuccess />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/payment/cancel"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentCancel />
                     </ProtectedRoute>
                   }
                 />

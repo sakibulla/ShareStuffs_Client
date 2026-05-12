@@ -52,13 +52,25 @@ export default function ItemDetail() {
 
     setSubmitting(true);
     try {
-      await api.post('/requests', { itemId: id, startDate, endDate, totalFee });
-      addToast('Request sent successfully!', 'success');
-      setStartDate('');
-      setEndDate('');
+      // 1. Create the borrow request
+      const requestRes = await api.post('/requests', { itemId: id, startDate, endDate, totalFee });
+      const newRequest = requestRes.data;
+
+      // 2. If there's a deposit, redirect to Stripe Checkout
+      if (item.deposit > 0) {
+        addToast('Redirecting to payment...', 'info');
+        const sessionRes = await api.post('/payments/create-checkout-session', {
+          requestId: newRequest._id,
+        });
+        // Redirect to Stripe hosted checkout page
+        window.location.href = sessionRes.data.url;
+      } else {
+        addToast('Request sent successfully!', 'success');
+        setStartDate('');
+        setEndDate('');
+      }
     } catch (error) {
       addToast(error.response?.data?.message || 'Failed to send request', 'error');
-    } finally {
       setSubmitting(false);
     }
   };
@@ -203,7 +215,11 @@ export default function ItemDetail() {
                       disabled={submitting || !item.available}
                       className="btn btn-primary btn-block btn-lg transition-all duration-200 active:scale-95"
                     >
-                      {submitting ? <span className="loading loading-spinner loading-sm"></span> : 'Send Borrow Request'}
+                      {submitting
+                        ? <span className="loading loading-spinner loading-sm"></span>
+                        : item.deposit > 0
+                          ? `Request & Pay Deposit ৳${item.deposit}`
+                          : 'Send Borrow Request'}
                     </button>
                     {!item.available && (
                       <p className="text-center text-sm text-error">This item is currently unavailable</p>

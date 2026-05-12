@@ -9,6 +9,9 @@ const statusBadge = (status) => {
   return map[status] || 'badge-ghost';
 };
 
+const paymentBadge = (paymentStatus) =>
+  paymentStatus === 'paid' ? 'badge-success' : 'badge-warning';
+
 const emptyState = (emoji, heading, sub, action) => (
   <div className="flex flex-col items-center justify-center py-24 text-center">
     <div className="text-7xl mb-4">{emoji}</div>
@@ -49,6 +52,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [requestFilter, setRequestFilter] = useState('All');
+  const [payingRequestId, setPayingRequestId] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [totalEarned, setTotalEarned] = useState(0);
   const [profileForm, setProfileForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -58,7 +64,17 @@ export default function Dashboard() {
   });
 
   const loadData = useCallback(async () => {
-    if (activeTab === 'profile') return;
+    if (activeTab === 'profile') {
+      // Load payment history for profile tab
+      try {
+        const res = await api.get('/payments/history');
+        setPaymentHistory(res.data.paymentHistory || []);
+        setTotalEarned(res.data.totalEarned || 0);
+      } catch {
+        // non-critical
+      }
+      return;
+    }
     setLoading(true);
     try {
       if (activeTab === 'listings') {
@@ -114,6 +130,17 @@ export default function Dashboard() {
       loadData();
     } catch {
       addToast('Failed to update request', 'error');
+    }
+  };
+
+  const handlePayDeposit = async (requestId) => {
+    setPayingRequestId(requestId);
+    try {
+      const res = await api.post('/payments/create-checkout-session', { requestId });
+      window.location.href = res.data.url;
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Failed to initiate payment', 'error');
+      setPayingRequestId(null);
     }
   };
 
@@ -415,9 +442,23 @@ export default function Dashboard() {
                                 {new Date(req.startDate).toLocaleDateString()} – {new Date(req.endDate).toLocaleDateString()}
                               </p>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
+                            <div className="flex flex-col items-end gap-2">
                               <div className={`badge ${statusBadge(req.status)}`}>{req.status}</div>
+                              <div className={`badge badge-sm ${paymentBadge(req.paymentStatus)}`}>
+                                {req.paymentStatus === 'paid' ? '💳 Paid' : '⏳ Unpaid'}
+                              </div>
                               <span className="text-sm font-semibold text-primary">৳{req.totalFee}</span>
+                              {req.paymentStatus !== 'paid' && req.depositAmount > 0 && (
+                                <button
+                                  onClick={() => handlePayDeposit(req._id)}
+                                  disabled={payingRequestId === req._id}
+                                  className="btn btn-xs btn-primary"
+                                >
+                                  {payingRequestId === req._id
+                                    ? <span className="loading loading-spinner loading-xs"></span>
+                                    : `Pay Deposit ৳${req.depositAmount}`}
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -458,6 +499,9 @@ export default function Dashboard() {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <div className={`badge ${statusBadge(req.status)}`}>{req.status}</div>
+                              <div className={`badge badge-sm ${paymentBadge(req.paymentStatus)}`}>
+                                {req.paymentStatus === 'paid' ? '💳 Paid' : '⏳ Unpaid'}
+                              </div>
                               <span className="text-sm font-semibold text-primary">৳{req.totalFee}</span>
                               {req.status === 'pending' && (
                                 <div className="flex gap-1">
@@ -626,6 +670,60 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </form>
+                  </div>
+
+                  {/* Earnings & Payment History */}
+                  <div className="card bg-base-100 shadow-sm border border-base-300">
+                    <div className="card-body p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold">Earnings & Payments</h3>
+                          <p className="text-sm text-base-content/60">Deposits received from borrowers</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-success">৳{totalEarned.toFixed(2)}</p>
+                          <p className="text-xs text-base-content/50">Total earned</p>
+                        </div>
+                      </div>
+
+                      {paymentHistory.length === 0 ? (
+                        <div className="text-center py-10 text-base-content/50">
+                          <div className="text-4xl mb-2">💳</div>
+                          <p>No payment history yet</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="table table-sm w-full">
+                            <thead>
+                              <tr className="bg-base-200">
+                                <th>Item</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...paymentHistory].reverse().map((p, i) => (
+                                <tr key={i} className="hover:bg-base-200">
+                                  <td className="font-medium">{p.itemTitle}</td>
+                                  <td>
+                                    <span className={`badge badge-sm ${p.type === 'received' ? 'badge-success' : 'badge-info'}`}>
+                                      {p.type === 'received' ? '⬇ Received' : '⬆ Paid'}
+                                    </span>
+                                  </td>
+                                  <td className={`font-semibold ${p.type === 'received' ? 'text-success' : 'text-info'}`}>
+                                    {p.type === 'received' ? '+' : '-'}৳{p.amount}
+                                  </td>
+                                  <td className="text-base-content/60 text-xs">
+                                    {new Date(p.paidAt).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
