@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import api from '../utils/api';
 
@@ -13,6 +13,34 @@ export default function Register() {
   const { login } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+
+  // Handle redirect result when user comes back from Google
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result) return;
+        const user = result.user;
+        const idToken = await user.getIdToken();
+        const response = await api.post('/auth/firebase-login', {
+          name: user.displayName,
+          email: user.email,
+          firebaseUID: user.uid,
+          avatar: user.photoURL,
+          idToken,
+        });
+        const { token, user: userData } = response.data;
+        login(userData, token);
+        addToast('Account created!', 'success');
+        navigate('/browse');
+      })
+      .catch((error) => {
+        if (error.code !== 'auth/no-current-user') {
+          console.error('Redirect result error:', error);
+          addToast(error.response?.data?.message || 'Google login failed', 'error');
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -54,30 +82,12 @@ export default function Register() {
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      const idToken = await user.getIdToken();
-
-      const response = await api.post('/auth/firebase-login', {
-        name: user.displayName,
-        email: user.email,
-        firebaseUID: user.uid,
-        avatar: user.photoURL,
-        idToken,
-      });
-
-      const { token, user: userData } = response.data;
-      login(userData, token);
-      addToast('Login successful!', 'success');
-      navigate('/browse');
+      await signInWithRedirect(auth, googleProvider);
+      // Page redirects to Google — result handled in useEffect above
     } catch (error) {
       console.error('Google login error:', error);
-      const message = error.response?.data?.message || error.message || 'Google login failed';
-      addToast(message, 'error');
-    } finally {
-      setLoading(false);
+      addToast('Google login failed', 'error');
     }
   };
 
