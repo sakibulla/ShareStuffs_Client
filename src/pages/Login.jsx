@@ -1,10 +1,30 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../utils/api';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
+import { pageTransition, staggerContainer, staggerItem, tapPress } from '../utils/animations';
+
+// ── Google "G" logo ────────────────────────────────────────────────────────
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  );
+}
+
+const perks = [
+  'Browse hundreds of items nearby',
+  'Save money by borrowing instead of buying',
+  'Build trust in your community',
+];
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -20,61 +40,50 @@ export default function Login() {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.password) newErrors.password = 'Password is required';
-    return newErrors;
+  const validate = () => {
+    const e = {};
+    if (!formData.email.trim()) e.email = 'Email is required';
+    if (!formData.password) e.password = 'Password is required';
+    return e;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', {
-        email: formData.email,
-        password: formData.password,
-      });
-      const { token, user } = response.data;
-      login(user, token);
-      addToast('Login successful!', 'success');
+      const res = await api.post('/auth/login', formData);
+      login(res.data.user, res.data.token);
+      addToast('Welcome back!', 'success');
       navigate('/browse');
-    } catch (error) {
-      addToast(error.response?.data?.message || 'Login failed', 'error');
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Login failed', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Popup is called DIRECTLY from the click handler — no async before signInWithPopup
-  // This is the only reliable way to avoid popup-blocked on all browsers
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      // signInWithPopup must be called synchronously from a user gesture
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
-      const response = await api.post('/auth/firebase-login', {
+      const res = await api.post('/auth/firebase-login', {
         name: result.user.displayName,
         email: result.user.email,
         firebaseUID: result.user.uid,
         avatar: result.user.photoURL,
         idToken,
       });
-      const { token, user: userData } = response.data;
-      login(userData, token);
-      addToast('Login successful!', 'success');
+      login(res.data.user, res.data.token);
+      addToast('Welcome back!', 'success');
       navigate('/browse');
-    } catch (error) {
-      console.error('Google login error:', error);
-      if (error.code === 'auth/popup-blocked') {
-        addToast('Popup was blocked. Please allow popups for this site in your browser settings, then try again.', 'error');
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        // User closed the popup — silent, no toast needed
-      } else {
-        addToast(error.response?.data?.message || error.message || 'Google login failed', 'error');
+    } catch (err) {
+      if (err.code === 'auth/popup-blocked') {
+        addToast('Popup blocked — allow popups for this site and try again.', 'error');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        addToast(err.response?.data?.message || err.message || 'Google login failed', 'error');
       }
     } finally {
       setLoading(false);
@@ -82,86 +91,138 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex fade-in">
-      {/* Left panel */}
+    <motion.div
+      variants={pageTransition}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      className="min-h-screen flex"
+    >
+      {/* ── Left brand panel ──────────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 brand-panel relative overflow-hidden flex-col items-center justify-center p-12 text-primary-content">
-        <div className="absolute inset-x-12 top-16 h-px bg-primary-content/25"></div>
-        <div className="absolute inset-x-12 bottom-16 h-px bg-primary-content/15"></div>
-        <div className="relative z-10 text-center">
-          <div className="text-5xl font-bold mb-4 flex items-center gap-3 justify-center">
+        <div className="absolute inset-x-12 top-16 h-px bg-primary-content/20" />
+        <div className="absolute inset-x-12 bottom-16 h-px bg-primary-content/10" />
+
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="relative z-10 text-center"
+        >
+          <motion.div variants={staggerItem} className="text-5xl font-extrabold mb-3 flex items-center gap-3 justify-center">
             <span>🔄</span> ShareStuff
-          </div>
-          <p className="text-xl text-primary-content/80 mb-10">Borrow. Lend. Connect.</p>
+          </motion.div>
+          <motion.p variants={staggerItem} className="text-xl text-primary-content/75 mb-10">
+            Borrow. Lend. Connect.
+          </motion.p>
           <div className="space-y-4 text-left">
-            {[
-              'Browse hundreds of items nearby',
-              'Save money by borrowing instead of buying',
-              'Build trust in your community',
-            ].map((point) => (
-              <div key={point} className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-primary-content/20 flex items-center justify-center text-sm font-bold">✓</span>
-                <span className="text-primary-content/90">{point}</span>
-              </div>
+            {perks.map((perk, i) => (
+              <motion.div key={perk} variants={staggerItem} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-primary-content/20 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                  ✓
+                </span>
+                <span className="text-primary-content/85 text-sm">{perk}</span>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Right panel */}
+      {/* ── Right form panel ──────────────────────────────────────────────── */}
       <div className="flex-1 bg-base-100 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-1">Welcome back 👋</h1>
-          <p className="text-base-content/60 mb-8">Sign in to your ShareStuff account</p>
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-md"
+        >
+          <motion.div variants={staggerItem}>
+            <h1 className="text-3xl font-bold mb-1">Welcome back 👋</h1>
+            <p className="text-base-content/55 mb-8 text-sm">Sign in to your ShareStuff account</p>
+          </motion.div>
 
-          <button
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="btn btn-outline w-full gap-2 mb-4 transition-all duration-200 active:scale-95"
-          >
-            {loading
-              ? <span className="loading loading-spinner loading-sm" />
-              : <span className="font-bold text-blue-500">G</span>
-            }
-            Sign in with Google
-          </button>
+          {/* Google button */}
+          <motion.div variants={staggerItem}>
+            <motion.button
+              whileTap={tapPress}
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="btn btn-outline w-full gap-3 mb-2 rounded-xl h-12 text-sm font-medium"
+            >
+              {loading ? <span className="loading loading-spinner loading-sm" /> : <GoogleIcon />}
+              Continue with Google
+            </motion.button>
+            <p className="text-xs text-base-content/35 text-center mb-5">
+              If a popup doesn't appear, allow popups for this site in your browser settings.
+            </p>
+          </motion.div>
 
-          {/* Popup blocked hint */}
-          <p className="text-xs text-base-content/40 text-center -mt-2 mb-4">
-            If a popup doesn't appear, check your browser's address bar for a blocked popup icon and allow it.
-          </p>
+          <motion.div variants={staggerItem} className="divider text-base-content/35 text-xs">
+            or continue with email
+          </motion.div>
 
-          <div className="divider text-base-content/40 text-sm">or continue with email</div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Email form */}
+          <motion.form variants={staggerItem} onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="form-control">
-              <label className="label"><span className="label-text font-medium">Email</span></label>
+              <label className="label py-1">
+                <span className="label-text font-medium text-sm">Email</span>
+              </label>
               <input
                 type="email" name="email" value={formData.email}
                 onChange={handleChange} placeholder="you@example.com"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.email ? 'input-error' : ''}`}
+                className={`input input-bordered w-full rounded-xl ${errors.email ? 'input-error' : ''}`}
+                autoComplete="email"
               />
-              {errors.email && <span className="text-error text-sm mt-1">{errors.email}</span>}
+              {errors.email && (
+                <motion.span
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-error text-xs mt-1"
+                >
+                  {errors.email}
+                </motion.span>
+              )}
             </div>
+
             <div className="form-control">
-              <label className="label"><span className="label-text font-medium">Password</span></label>
+              <label className="label py-1">
+                <span className="label-text font-medium text-sm">Password</span>
+              </label>
               <input
                 type="password" name="password" value={formData.password}
                 onChange={handleChange} placeholder="••••••••"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.password ? 'input-error' : ''}`}
+                className={`input input-bordered w-full rounded-xl ${errors.password ? 'input-error' : ''}`}
+                autoComplete="current-password"
               />
-              {errors.password && <span className="text-error text-sm mt-1">{errors.password}</span>}
+              {errors.password && (
+                <motion.span
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-error text-xs mt-1"
+                >
+                  {errors.password}
+                </motion.span>
+              )}
             </div>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-block mt-2">
-              {loading ? <span className="loading loading-spinner loading-sm"></span> : 'Sign In'}
-            </button>
-          </form>
 
-          <p className="text-center text-base-content/60 mt-6 text-sm">
+            <motion.button
+              whileTap={tapPress}
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary btn-block rounded-xl mt-2 h-12"
+            >
+              {loading ? <span className="loading loading-spinner loading-sm" /> : 'Sign In'}
+            </motion.button>
+          </motion.form>
+
+          <motion.p variants={staggerItem} className="text-center text-base-content/55 mt-6 text-sm">
             Don't have an account?{' '}
-            <Link to="/register" className="link link-primary font-semibold">Join ShareStuff</Link>
-          </p>
-        </div>
+            <Link to="/register" className="link link-primary font-semibold">
+              Join ShareStuff
+            </Link>
+          </motion.p>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
