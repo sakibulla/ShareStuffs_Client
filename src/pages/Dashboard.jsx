@@ -57,7 +57,7 @@ function ProfileAvatar({ user, size = 'w-12', textSize = 'text-lg' }) {
 }
 
 // ── Request card — shared between My Requests and Incoming ────────────────
-function RequestCard({ req, isLender, reviewedRequestIds, onAction, onPayDeposit, payingId, onReview, onRefund, refundingId }) {
+function RequestCard({ req, isLender, reviewedRequestIds, onAction, onPayDeposit, payingId, onReview }) {
   const person = isLender ? req.borrower : req.lender;
   const personLabel = isLender ? 'Borrower' : 'Lender';
   const messageLink = isLender
@@ -119,20 +119,6 @@ function RequestCard({ req, isLender, reviewedRequestIds, onAction, onPayDeposit
           {isLender && req.status === 'delivered' && (
             <motion.button whileTap={tapPress} onClick={() => onAction(req._id, 'returned')} className="btn btn-neutral btn-xs rounded-lg">
               Mark Returned
-            </motion.button>
-          )}
-
-          {/* Lender: refund button (if payment was made) */}
-          {isLender && req.paymentStatus === 'paid' && req.status === 'pending' && (
-            <motion.button
-              whileTap={tapPress}
-              onClick={() => onRefund(req._id)}
-              disabled={refundingId === req._id}
-              className="btn btn-warning btn-xs rounded-lg"
-            >
-              {refundingId === req._id
-                ? <span className="loading loading-spinner loading-xs" />
-                : '↩️ Refund'}
             </motion.button>
           )}
 
@@ -282,7 +268,6 @@ export default function Dashboard() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [requestFilter, setRequestFilter] = useState('All');
   const [payingRequestId, setPayingRequestId] = useState(null);
-  const [refundingRequestId, setRefundingRequestId] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [totalEarned, setTotalEarned] = useState(0);
   const [reviewedRequestIds, setReviewedRequestIds] = useState(new Set());
@@ -367,22 +352,6 @@ export default function Dashboard() {
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to initiate payment', 'error');
       setPayingRequestId(null);
-    }
-  };
-
-  const handleRefund = async (requestId) => {
-    setRefundingRequestId(requestId);
-    try {
-      await api.post('/payments/refund', { 
-        requestId, 
-        reason: 'Request rejected by lender' 
-      });
-      addToast('Payment refunded successfully!', 'success');
-      loadData();
-    } catch (err) {
-      addToast(err.response?.data?.message || 'Failed to refund payment', 'error');
-    } finally {
-      setRefundingRequestId(null);
     }
   };
 
@@ -697,9 +666,7 @@ export default function Dashboard() {
                             onAction={handleRequestAction}
                             onPayDeposit={handlePayDeposit}
                             payingId={payingRequestId}
-                            onReview={openReviewModal}
-                            onRefund={handleRefund}
-                            refundingId={refundingRequestId} />
+                            onReview={openReviewModal} />
                         ))}
                       </motion.div>
                     )}
@@ -730,9 +697,7 @@ export default function Dashboard() {
                             onAction={handleRequestAction}
                             onPayDeposit={handlePayDeposit}
                             payingId={payingRequestId}
-                            onReview={openReviewModal}
-                            onRefund={handleRefund}
-                            refundingId={refundingRequestId} />
+                            onReview={openReviewModal} />
                         ))}
                       </motion.div>
                     )}
