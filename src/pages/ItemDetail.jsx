@@ -12,7 +12,7 @@ const categoryEmoji = {
 export default function ItemDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { addToast } = useToast();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,8 +22,16 @@ export default function ItemDetail() {
   const [totalFee, setTotalFee] = useState(0);
   const [days, setDays] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [ownerReviews, setOwnerReviews] = useState([]);
 
   useEffect(() => { fetchItem(); }, [id]);
+
+  useEffect(() => {
+    if (!item?.owner?._id) return;
+    api.get(`/reviews/user/${item.owner._id}`)
+      .then((res) => setOwnerReviews(res.data || []))
+      .catch(() => {});
+  }, [item?.owner?._id]);
 
   useEffect(() => {
     if (!startDate || !endDate || !item) { setTotalFee(0); setDays(0); return; }
@@ -143,7 +151,7 @@ export default function ItemDetail() {
                 </div>
               </div>
               <h1 className="text-2xl lg:text-3xl font-bold mb-2">{item.title}</h1>
-              <StarRating rating={5} count={12} />
+              <StarRating rating={item.owner?.rating || 0} count={item.owner?.totalReviews || 0} />
 
               <div className="divider"></div>
 
@@ -257,12 +265,55 @@ export default function ItemDetail() {
                   </div>
                   <div>
                     <p className="font-semibold">{ownerName}</p>
-                    <StarRating rating={5} count={12} />
-                    <p className="text-xs text-base-content/50 mt-0.5">Member since 2024</p>
+                    <StarRating rating={item.owner?.rating || 0} count={item.owner?.totalReviews || 0} />
+                    <p className="text-xs text-base-content/50 mt-0.5">Member since {new Date(item.owner?.createdAt || Date.now()).getFullYear()}</p>
+                  </div>
+                </div>
+                {/* Message lender button — only for other users */}
+                {isAuthenticated && item.owner?._id !== user?._id && (
+                  <button
+                    onClick={() => navigate(`/messages?with=${item.owner._id}`)}
+                    className="btn btn-outline btn-sm btn-block mt-4 gap-2"
+                  >
+                    💬 Message Lender
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Owner reviews */}
+            {ownerReviews.length > 0 && (
+              <div className="card bg-base-100 border border-base-300 shadow-sm">
+                <div className="card-body p-5">
+                  <h3 className="font-semibold text-sm text-base-content/60 mb-3">
+                    REVIEWS ({ownerReviews.length})
+                  </h3>
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    {ownerReviews.map((review) => (
+                      <div key={review._id} className="border-b border-base-200 pb-3 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="avatar placeholder">
+                            <div className="bg-primary/20 text-primary rounded-full w-7">
+                              <span className="text-xs font-bold">
+                                {review.reviewer?.name?.charAt(0)?.toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium">{review.reviewer?.name}</span>
+                          <StarRating rating={review.rating} />
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-base-content/70 ml-9">{review.comment}</p>
+                        )}
+                        <p className="text-xs text-base-content/40 ml-9 mt-1">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

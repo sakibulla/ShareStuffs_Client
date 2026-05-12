@@ -14,6 +14,9 @@ import Dashboard from './pages/Dashboard';
 import AddEditItem from './pages/AddEditItem';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
+import Messages from './pages/Messages';
+import About from './pages/About';
+import Contact from './pages/Contact';
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -42,6 +45,8 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/browse" element={<Browse />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
                 <Route
                   path="/items/new"
                   element={
@@ -80,6 +85,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <PaymentCancel />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/messages"
+                  element={
+                    <ProtectedRoute>
+                      <Messages />
                     </ProtectedRoute>
                   }
                 />

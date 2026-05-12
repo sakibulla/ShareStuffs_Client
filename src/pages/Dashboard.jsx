@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import StarRating from '../components/StarRating';
 import api from '../utils/api';
+import SensorPanel from '../components/SensorPanel';
 
 const statusBadge = (status) => {
   const map = { pending: 'badge-warning', accepted: 'badge-success', rejected: 'badge-error', returned: 'badge-neutral' };
@@ -55,6 +57,13 @@ export default function Dashboard() {
   const [payingRequestId, setPayingRequestId] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [totalEarned, setTotalEarned] = useState(0);
+  // Review state
+  const [reviewedRequestIds, setReviewedRequestIds] = useState(new Set());
+  const [reviewModal, setReviewModal] = useState(null); // { requestId, revieweeId, revieweeName, role }
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [myReceivedReviews, setMyReceivedReviews] = useState([]);
   const [profileForm, setProfileForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -65,11 +74,18 @@ export default function Dashboard() {
 
   const loadData = useCallback(async () => {
     if (activeTab === 'profile') {
-      // Load payment history for profile tab
+      // Load payment history, received reviews, and fresh user data for profile tab
       try {
-        const res = await api.get('/payments/history');
-        setPaymentHistory(res.data.paymentHistory || []);
-        setTotalEarned(res.data.totalEarned || 0);
+        const [paymentRes, reviewRes, meRes] = await Promise.all([
+          api.get('/payments/history'),
+          api.get(`/reviews/user/${user._id}`),
+          api.get('/auth/me'),
+        ]);
+        setPaymentHistory(paymentRes.data.paymentHistory || []);
+        setTotalEarned(paymentRes.data.totalEarned || 0);
+        setMyReceivedReviews(reviewRes.data || []);
+        // Sync the latest rating/totalReviews/etc into auth context
+        if (meRes.data?.user) updateUser(meRes.data.user);
       } catch {
         // non-critical
       }
@@ -83,16 +99,21 @@ export default function Dashboard() {
       } else if (activeTab === 'requests') {
         const res = await api.get('/requests/mine');
         setMyRequests(res.data || []);
+        // Load which requests this user has already reviewed
+        const reviewed = await api.get('/reviews/mine');
+        setReviewedRequestIds(new Set(reviewed.data));
       } else if (activeTab === 'incoming') {
         const res = await api.get('/requests/lender');
         setIncomingRequests(res.data || []);
+        const reviewed = await api.get('/reviews/mine');
+        setReviewedRequestIds(new Set(reviewed.data));
       }
     } catch {
       addToast('Failed to load data', 'error');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, addToast]);
+  }, [activeTab, addToast, updateUser, user._id]);
 
   useEffect(() => {
     Promise.resolve().then(loadData);
@@ -141,6 +162,38 @@ export default function Dashboard() {
     } catch (error) {
       addToast(error.response?.data?.message || 'Failed to initiate payment', 'error');
       setPayingRequestId(null);
+    }
+  };
+
+  const openReviewModal = (req, revieweeId, revieweeName) => {
+    setReviewModal({ requestId: req._id, revieweeId, revieweeName });
+    setReviewRating(0);
+    setReviewComment('');
+  };
+
+  const closeReviewModal = () => {
+    setReviewModal(null);
+    setReviewRating(0);
+    setReviewComment('');
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewRating) { addToast('Please select a star rating', 'error'); return; }
+    setSubmittingReview(true);
+    try {
+      await api.post('/reviews', {
+        revieweeId: reviewModal.revieweeId,
+        requestId: reviewModal.requestId,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      addToast('Review submitted!', 'success');
+      setReviewedRequestIds((prev) => new Set([...prev, reviewModal.requestId]));
+      closeReviewModal();
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Failed to submit review', 'error');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -418,7 +471,7 @@ export default function Dashboard() {
                 <div>
                   <h2 className="text-2xl font-bold mb-4">My Requests</h2>
                   <div className="flex gap-2 mb-6 flex-wrap">
-                    {['All', 'Pending', 'Accepted', 'Rejected'].map((f) => (
+                    {['All', 'Pending', 'Accepted', 'Rejected', 'Returned'].map((f) => (
                       <button key={f} onClick={() => setRequestFilter(f)}
                         className={`btn btn-sm rounded-full ${requestFilter === f ? 'btn-primary' : 'btn-ghost'}`}>
                         {f}
@@ -459,7 +512,30 @@ export default function Dashboard() {
                                     : `Pay Deposit ৳${req.depositAmount}`}
                                 </button>
                               )}
+                              {req.lender?._id && (
+                                <Link
+                                  to={`/messages?with=${req.lender._id}&requestId=${req._id}`}
+                                  className="btn btn-xs btn-outline gap-1"
+                                >
+                                  💬 Message Lender
+                                </Link>
+                              )}
+                              {req.status === 'returned' && !reviewedRequestIds.has(req._id) && (
+                                <button
+                                  onClick={() => openReviewModal(req, req.lender?._id, req.lender?.name)}
+                                  className="btn btn-xs btn-outline btn-warning"
+                                >
+                                  ⭐ Review Lender
+                                </button>
+                              )}
+                              {req.status === 'returned' && reviewedRequestIds.has(req._id) && (
+                                <span className="text-xs text-success">✓ Reviewed</span>
+                              )}
                             </div>
+                          </div>
+                          {/* Sensor panel — borrower sees item condition */}
+                          <div className="px-4 pb-4">
+                            <SensorPanel request={req} isLender={false} />
                           </div>
                         </div>
                       ))}
@@ -473,7 +549,7 @@ export default function Dashboard() {
                 <div>
                   <h2 className="text-2xl font-bold mb-4">Incoming Requests</h2>
                   <div className="flex gap-2 mb-6 flex-wrap">
-                    {['All', 'Pending', 'Accepted', 'Rejected'].map((f) => (
+                    {['All', 'Pending', 'Accepted', 'Rejected', 'Returned'].map((f) => (
                       <button key={f} onClick={() => setRequestFilter(f)}
                         className={`btn btn-sm rounded-full ${requestFilter === f ? 'btn-primary' : 'btn-ghost'}`}>
                         {f}
@@ -509,7 +585,38 @@ export default function Dashboard() {
                                   <button onClick={() => handleRequestAction(req._id, 'rejected')} className="btn btn-error btn-outline btn-xs">Reject</button>
                                 </div>
                               )}
+                              {req.status === 'accepted' && (
+                                <button
+                                  onClick={() => handleRequestAction(req._id, 'returned')}
+                                  className="btn btn-xs btn-neutral"
+                                >
+                                  Mark Returned
+                                </button>
+                              )}
+                              {req.borrower?._id && (
+                                <Link
+                                  to={`/messages?with=${req.borrower._id}&requestId=${req._id}`}
+                                  className="btn btn-xs btn-outline gap-1"
+                                >
+                                  💬 Message Borrower
+                                </Link>
+                              )}
+                              {req.status === 'returned' && !reviewedRequestIds.has(req._id) && (
+                                <button
+                                  onClick={() => openReviewModal(req, req.borrower?._id, req.borrower?.name)}
+                                  className="btn btn-xs btn-outline btn-warning"
+                                >
+                                  ⭐ Review Borrower
+                                </button>
+                              )}
+                              {req.status === 'returned' && reviewedRequestIds.has(req._id) && (
+                                <span className="text-xs text-success">✓ Reviewed</span>
+                              )}
                             </div>
+                          </div>
+                          {/* Sensor panel — lender manages sensor for this rental */}
+                          <div className="px-4 pb-4">
+                            <SensorPanel request={req} isLender={true} />
                           </div>
                         </div>
                       ))}
@@ -673,8 +780,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Earnings & Payment History */}
-                  <div className="card bg-base-100 shadow-sm border border-base-300">
-                    <div className="card-body p-6">
+                  <div className="card bg-base-100 shadow-sm border border-base-300">                    <div className="card-body p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div>
                           <h3 className="text-xl font-bold">Earnings & Payments</h3>
@@ -725,12 +831,128 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
+
+                  {/* My Reviews */}
+                  <div className="card bg-base-100 shadow-sm border border-base-300">
+                    <div className="card-body p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold">My Reviews</h3>
+                          <p className="text-sm text-base-content/60">What others say about you</p>
+                        </div>
+                        {myReceivedReviews.length > 0 && (
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-warning">
+                              {'★'.repeat(Math.round(user?.rating || 0))}{'☆'.repeat(5 - Math.round(user?.rating || 0))}
+                            </p>
+                            <p className="text-xs text-base-content/50">
+                              {Number(user?.rating || 0).toFixed(1)} avg · {myReceivedReviews.length} review{myReceivedReviews.length !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {myReceivedReviews.length === 0 ? (
+                        <div className="text-center py-10 text-base-content/50">
+                          <div className="text-4xl mb-2">⭐</div>
+                          <p>No reviews yet</p>
+                          <p className="text-xs mt-1">Complete a borrow/lend to receive your first review</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {myReceivedReviews.map((review) => (
+                            <div key={review._id} className="flex gap-3 border-b border-base-200 pb-4 last:border-0 last:pb-0">
+                              <div className="avatar placeholder flex-shrink-0">
+                                <div className="bg-primary/20 text-primary rounded-full w-10">
+                                  <span className="text-sm font-bold">
+                                    {review.reviewer?.name?.charAt(0)?.toUpperCase() || 'U'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm">{review.reviewer?.name}</span>
+                                  <span className="text-xs text-base-content/40">
+                                    {new Date(review.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <div className="flex gap-0.5 my-1">
+                                  {[1,2,3,4,5].map((s) => (
+                                    <span key={s} className={s <= review.rating ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+                                  ))}
+                                </div>
+                                {review.comment && (
+                                  <p className="text-sm text-base-content/70">{review.comment}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </>
           )}
         </main>
       </div>
+
+      {/* ── Review Modal ── */}
+      {reviewModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <button
+              onClick={closeReviewModal}
+              className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3"
+            >✕</button>
+
+            <h3 className="font-bold text-lg mb-1">Leave a Review</h3>
+            <p className="text-base-content/60 text-sm mb-5">
+              How was your experience with <strong>{reviewModal.revieweeName}</strong>?
+            </p>
+
+            <div className="flex justify-center mb-4">
+              <StarRating interactive value={reviewRating} onChange={setReviewRating} />
+            </div>
+            {reviewRating > 0 && (
+              <p className="text-center text-sm text-base-content/60 mb-4">
+                {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][reviewRating]}
+              </p>
+            )}
+
+            <div className="form-control mb-5">
+              <label className="label">
+                <span className="label-text font-medium">Comment <span className="text-base-content/40">(optional)</span></span>
+              </label>
+              <textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                className="textarea textarea-bordered min-h-24 focus:ring-2 ring-primary/30"
+                placeholder="Share details about your experience..."
+                maxLength={500}
+              />
+              <label className="label">
+                <span className="label-text-alt text-base-content/40">{reviewComment.length}/500</span>
+              </label>
+            </div>
+
+            <div className="modal-action mt-0">
+              <button onClick={closeReviewModal} className="btn btn-ghost">Cancel</button>
+              <button
+                onClick={handleSubmitReview}
+                disabled={submittingReview || !reviewRating}
+                className="btn btn-primary"
+              >
+                {submittingReview
+                  ? <span className="loading loading-spinner loading-sm"></span>
+                  : 'Submit Review'}
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={closeReviewModal}></div>
+        </div>
+      )}
     </div>
   );
 }

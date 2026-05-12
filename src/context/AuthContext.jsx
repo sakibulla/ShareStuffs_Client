@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { connectSocket, disconnectSocket } from '../utils/socket';
 
 const AuthContext = createContext();
 
@@ -14,6 +15,7 @@ export const AuthProvider = ({ children }) => {
         if (savedToken) {
             setToken(savedToken);
             setUser(savedUser ? JSON.parse(savedUser) : null);
+            connectSocket(savedToken);
         }
         setLoading(false);
     }, []);
@@ -23,6 +25,7 @@ export const AuthProvider = ({ children }) => {
         setToken(authToken);
         localStorage.setItem('token', authToken);
         localStorage.setItem('user', JSON.stringify(userData));
+        connectSocket(authToken);
     };
 
     const updateUser = (userData) => {
@@ -35,6 +38,7 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        disconnectSocket();
     };
 
     const isAuthenticated = !!token;

@@ -14,9 +14,12 @@
     "axios": "^1.15.2",
     "daisyui": "^5.5.19",
     "firebase": "^12.13.0",
+    "leaflet": "1.9.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-leaflet": "5.0.0",
     "react-router-dom": "^7.14.2",
+    "socket.io-client": "4.7.5",
     "tailwindcss": "^4.2.4"
   },
   "devDependencies": {

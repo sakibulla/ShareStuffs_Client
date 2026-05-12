@@ -5,6 +5,30 @@ import api from '../utils/api';
 
 const categories = ['Tools', 'Camping', 'Party', 'Kitchen', 'Electronics', 'Sports'];
 
+const BD_DISTRICTS = [
+  'Bagerhat','Bandarban','Barguna','Barishal','Bhola','Bogura','Brahmanbaria',
+  'Chandpur','Chapai Nawabganj','Chattogram','Chuadanga','Cox\'s Bazar','Cumilla',
+  'Dhaka','Dinajpur','Faridpur','Feni','Gaibandha','Gazipur','Gopalganj',
+  'Habiganj','Jamalpur','Jashore','Jhalokati','Jhenaidah','Joypurhat',
+  'Khagrachhari','Khulna','Kishoreganj','Kurigram','Kushtia','Lakshmipur',
+  'Lalmonirhat','Madaripur','Magura','Manikganj','Meherpur','Moulvibazar',
+  'Munshiganj','Mymensingh','Naogaon','Narail','Narayanganj','Narsingdi',
+  'Natore','Netrokona','Nilphamari','Noakhali','Pabna','Panchagarh',
+  'Patuakhali','Pirojpur','Rajbari','Rajshahi','Rangamati','Rangpur',
+  'Satkhira','Shariatpur','Sherpur','Sirajganj','Sunamganj','Sylhet',
+  'Tangail','Thakurgaon',
+];
+
+// Normalise old free-text locations to the "District, Bangladesh" format
+function normaliseLocation(loc) {
+  if (!loc) return '';
+  if (loc.includes(', Bangladesh')) return loc;
+  const match = BD_DISTRICTS.find(
+    (d) => d.toLowerCase() === loc.trim().toLowerCase()
+  );
+  return match ? `${match}, Bangladesh` : '';
+}
+
 export default function AddEditItem() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -38,7 +62,7 @@ export default function AddEditItem() {
           category: item.category || 'Tools',
           dailyFee: item.dailyFee ?? '',
           deposit: item.deposit ?? '',
-          location: item.location || '',
+          location: normaliseLocation(item.location || ''),
           available: item.available ?? true,
           images: item.images || [],
         });
@@ -181,15 +205,18 @@ export default function AddEditItem() {
 
                 {/* Location */}
                 <div className="form-control">
-                  <label className="label"><span className="label-text font-medium">Location</span></label>
-                  <input
-                    type="text"
+                  <label className="label"><span className="label-text font-medium">Location (District)</span></label>
+                  <select
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    placeholder="Item location"
-                    className="input input-bordered w-full"
-                  />
+                    className="select select-bordered w-full"
+                  >
+                    <option value="">Select a district…</option>
+                    {BD_DISTRICTS.map((d) => (
+                      <option key={d} value={`${d}, Bangladesh`}>{d}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Daily Fee */}
