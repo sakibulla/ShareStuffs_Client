@@ -18,6 +18,9 @@ export default function ItemDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [startDate, setStartDate] = useState('');
+
+  // Today's date in YYYY-MM-DD format for the min attribute
+  const today = new Date().toISOString().split('T')[0];
   const [endDate, setEndDate] = useState('');
   const [totalFee, setTotalFee] = useState(0);
   const [days, setDays] = useState(0);
@@ -185,6 +188,7 @@ export default function ItemDetail() {
                         <input
                           type="date"
                           value={startDate}
+                          min={today}
                           onChange={(e) => setStartDate(e.target.value)}
                           className="input input-bordered input-sm w-full focus:ring-2 ring-primary/30 transition-all duration-200"
                         />
@@ -194,6 +198,7 @@ export default function ItemDetail() {
                         <input
                           type="date"
                           value={endDate}
+                          min={startDate || today}
                           onChange={(e) => setEndDate(e.target.value)}
                           className="input input-bordered input-sm w-full focus:ring-2 ring-primary/30 transition-all duration-200"
                         />
