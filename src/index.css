@@ -1,8 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "daisyui/daisyui.css";
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
 * {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -11,35 +16,25 @@
 
 html {
   scroll-behavior: smooth;
+  /* Prevent layout shift on scrollbar appear/disappear */
+  scrollbar-gutter: stable;
 }
 
 /* ── Light Theme ──────────────────────────────────────────────────────────── */
 [data-theme="light"] {
   color-scheme: light;
-
-  /* Surfaces — warm white with a hint of blue-grey */
   --color-base-100: oklch(99.5% 0.002 240);
   --color-base-200: oklch(96.5% 0.006 240);
   --color-base-300: oklch(91%   0.012 240);
   --color-base-content: oklch(18% 0.02 260);
-
-  /* Primary — vibrant teal/cyan */
   --color-primary: oklch(56% 0.155 195);
   --color-primary-content: oklch(99% 0.008 195);
-
-  /* Secondary — rich indigo */
   --color-secondary: oklch(50% 0.175 270);
   --color-secondary-content: oklch(99% 0.008 270);
-
-  /* Accent — warm amber */
   --color-accent: oklch(72% 0.165 55);
   --color-accent-content: oklch(18% 0.04 55);
-
-  /* Neutral */
   --color-neutral: oklch(22% 0.02 260);
   --color-neutral-content: oklch(97% 0.006 260);
-
-  /* Semantic */
   --color-info:    oklch(60% 0.145 235);
   --color-info-content: oklch(99% 0.008 235);
   --color-success: oklch(60% 0.155 160);
@@ -48,8 +43,6 @@ html {
   --color-warning-content: oklch(20% 0.05 75);
   --color-error:   oklch(60% 0.205 25);
   --color-error-content: oklch(99% 0.008 25);
-
-  /* Shape */
   --radius-selector: 0.625rem;
   --radius-field: 0.625rem;
   --radius-box: 0.75rem;
@@ -61,30 +54,18 @@ html {
 /* ── Dark Theme ───────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
   color-scheme: dark;
-
-  /* Surfaces — deep navy/slate, not flat grey */
   --color-base-100: oklch(17% 0.022 265);
   --color-base-200: oklch(13% 0.020 268);
   --color-base-300: oklch(22% 0.026 265);
   --color-base-content: oklch(92% 0.010 255);
-
-  /* Primary — bright cyan that pops on dark */
   --color-primary: oklch(74% 0.145 192);
   --color-primary-content: oklch(13% 0.025 192);
-
-  /* Secondary — soft violet */
   --color-secondary: oklch(72% 0.130 272);
   --color-secondary-content: oklch(13% 0.025 272);
-
-  /* Accent — warm gold */
   --color-accent: oklch(78% 0.155 58);
   --color-accent-content: oklch(15% 0.035 58);
-
-  /* Neutral */
   --color-neutral: oklch(85% 0.010 255);
   --color-neutral-content: oklch(15% 0.020 260);
-
-  /* Semantic */
   --color-info:    oklch(74% 0.120 232);
   --color-info-content: oklch(14% 0.025 232);
   --color-success: oklch(72% 0.140 158);
@@ -93,8 +74,6 @@ html {
   --color-warning-content: oklch(18% 0.040 78);
   --color-error:   oklch(70% 0.175 25);
   --color-error-content: oklch(15% 0.030 25);
-
-  /* Shape */
   --radius-selector: 0.625rem;
   --radius-field: 0.625rem;
   --radius-box: 0.75rem;
@@ -103,39 +82,32 @@ html {
   --noise: 0;
 }
 
-/* ── Body background ──────────────────────────────────────────────────────── */
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+/* Simple solid background — no expensive radial gradients on body */
 body {
   background-color: var(--color-base-200);
   color: var(--color-base-content);
   min-height: 100dvh;
 }
 
-/* Light mode — clean with very subtle warm tint */
-[data-theme="light"] body {
-  background:
-    radial-gradient(ellipse 80% 50% at 0% 0%,
-      color-mix(in oklch, var(--color-primary) 8%, transparent),
-      transparent),
-    radial-gradient(ellipse 60% 40% at 100% 100%,
-      color-mix(in oklch, var(--color-secondary) 6%, transparent),
-      transparent),
-    var(--color-base-200);
+/* ── Theme transition — only on html, not every element ──────────────────── */
+/*
+   KEY PERF FIX: Instead of transitioning every * element (which causes
+   thousands of style recalcs), we only transition the html element's
+   background and use a CSS view-transition for the flash effect.
+   Individual interactive elements handle their own transitions explicitly.
+*/
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Dark mode — deep navy with a rich glow */
-[data-theme="dark"] body {
-  background:
-    radial-gradient(ellipse 70% 45% at 15% 10%,
-      color-mix(in oklch, var(--color-primary) 12%, transparent),
-      transparent),
-    radial-gradient(ellipse 55% 40% at 85% 90%,
-      color-mix(in oklch, var(--color-secondary) 10%, transparent),
-      transparent),
-    radial-gradient(ellipse 40% 30% at 50% 50%,
-      color-mix(in oklch, var(--color-accent) 4%, transparent),
-      transparent),
-    var(--color-base-200);
+/* ── Typography ───────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
+
+p { line-height: 1.65; }
 
 /* ── Brand gradient text ──────────────────────────────────────────────────── */
 .brand-gradient-text {
@@ -151,15 +123,25 @@ body {
 }
 
 /* ── Hero surface ─────────────────────────────────────────────────────────── */
+/* Use a pseudo-element for the gradient so it doesn't repaint on scroll */
 .hero-surface {
+  position: relative;
+  background-color: var(--color-base-100);
+  isolation: isolate;
+}
+.hero-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background:
     linear-gradient(135deg,
-      color-mix(in oklch, var(--color-primary) 12%, transparent),
-      transparent 40%),
+      color-mix(in oklch, var(--color-primary) 12%, transparent) 0%,
+      transparent 45%),
     linear-gradient(315deg,
-      color-mix(in oklch, var(--color-secondary) 10%, transparent),
-      transparent 40%),
-    var(--color-base-100);
+      color-mix(in oklch, var(--color-secondary) 10%, transparent) 0%,
+      transparent 45%);
+  pointer-events: none;
 }
 
 /* ── Auth brand panel ─────────────────────────────────────────────────────── */
@@ -179,7 +161,7 @@ body {
   background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
 }
 
-/* ── Item placeholder (no image) ─────────────────────────────────────────── */
+/* ── Item placeholder ─────────────────────────────────────────────────────── */
 .item-placeholder {
   background: linear-gradient(
     135deg,
@@ -188,7 +170,7 @@ body {
   );
 }
 
-/* ── Glass card effect ────────────────────────────────────────────────────── */
+/* ── Glass card ───────────────────────────────────────────────────────────── */
 .glass-card {
   background: color-mix(in oklch, var(--color-base-100) 80%, transparent);
   backdrop-filter: blur(12px);
@@ -196,25 +178,66 @@ body {
   border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
 }
 
+/* ── Navbar blur ──────────────────────────────────────────────────────────── */
+.navbar-blur {
+  background: color-mix(in oklch, var(--color-base-100) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  /* Promote to own layer so blur doesn't repaint on scroll */
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ── Card hover lift ──────────────────────────────────────────────────────── */
+.card-hover {
+  /* Only transition transform + shadow — NOT color/background */
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  will-change: transform;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -8px color-mix(in oklch, var(--color-base-content) 14%, transparent);
+}
+
+/* ── Glow button ──────────────────────────────────────────────────────────── */
+.btn-glow {
+  box-shadow: 0 0 20px -4px color-mix(in oklch, var(--color-primary) 45%, transparent);
+  transition: box-shadow 0.2s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 28px -2px color-mix(in oklch, var(--color-primary) 60%, transparent);
+}
+
+/* ── Section line ─────────────────────────────────────────────────────────── */
+.section-line {
+  width: 3rem;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+}
+
+/* ── Inputs ───────────────────────────────────────────────────────────────── */
+.input, .select, .textarea {
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.input:focus, .select:focus, .textarea:focus {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 18%, transparent);
+}
+
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--color-base-content) 20%, transparent);
+  background: color-mix(in oklch, var(--color-base-content) 18%, transparent);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklch, var(--color-base-content) 35%, transparent);
+  background: color-mix(in oklch, var(--color-base-content) 32%, transparent);
 }
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  background: color-mix(in oklch, var(--color-primary) 22%, transparent);
   color: var(--color-base-content);
 }
 
@@ -226,124 +249,72 @@ body {
 
 /* ── Animations ───────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(100%); }
   to   { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
 }
-
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  100% { background-position:  200% 0; }
 }
 
-.fade-in       { animation: fadeIn 0.25s ease-out both; }
-.fade-in-up    { animation: fadeInUp 0.35s ease-out both; }
-.slide-in-right { animation: slideInRight 0.3s ease-out both; }
-.scale-in      { animation: scaleIn 0.2s ease-out both; }
-
-/* Staggered children */
-.stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 60ms; }
-.stagger > *:nth-child(3) { animation-delay: 120ms; }
-.stagger > *:nth-child(4) { animation-delay: 180ms; }
-.stagger > *:nth-child(5) { animation-delay: 240ms; }
-.stagger > *:nth-child(6) { animation-delay: 300ms; }
+/* Use will-change only on elements that are actually animating */
+.fade-in        { animation: fadeIn 0.22s ease-out both; }
+.slide-in-right { animation: slideInRight 0.25s ease-out both; }
+.scale-in       { animation: scaleIn 0.18s ease-out both; }
 
 /* ── Skeleton shimmer ─────────────────────────────────────────────────────── */
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
     var(--color-base-300) 25%,
-    color-mix(in oklch, var(--color-base-300) 60%, var(--color-base-100)) 50%,
+    color-mix(in oklch, var(--color-base-300) 55%, var(--color-base-100)) 50%,
     var(--color-base-300) 75%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.4s infinite linear;
 }
 
-/* ── Card hover lift ──────────────────────────────────────────────────────── */
-.card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 32px -8px color-mix(in oklch, var(--color-base-content) 15%, transparent);
+/* ── GPU-accelerated layers for heavy elements ────────────────────────────── */
+.navbar, nav {
+  transform: translateZ(0);
 }
 
-/* ── Glow button ──────────────────────────────────────────────────────────── */
-.btn-glow {
-  box-shadow: 0 0 20px -4px color-mix(in oklch, var(--color-primary) 50%, transparent);
-}
-.btn-glow:hover {
-  box-shadow: 0 0 28px -2px color-mix(in oklch, var(--color-primary) 65%, transparent);
-}
-
-/* ── Divider with text ────────────────────────────────────────────────────── */
-.divider {
-  color: color-mix(in oklch, var(--color-base-content) 35%, transparent);
+/* ── Reduce motion ────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-/* ── Input polish ─────────────────────────────────────────────────────────── */
-.input, .select, .textarea {
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+/* ── View Transitions API — smooth theme crossfade ───────────────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.25s;
+  animation-timing-function: ease;
+  mix-blend-mode: normal;
 }
-.input:focus, .select:focus, .textarea:focus {
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 20%, transparent);
+::view-transition-old(root) {
+  animation-name: theme-fade-out;
 }
-
-/* ── Navbar blur ──────────────────────────────────────────────────────────── */
-.navbar-blur {
-  background: color-mix(in oklch, var(--color-base-100) 85%, transparent);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-/* ── Section divider line ─────────────────────────────────────────────────── */
-.section-line {
-  width: 3rem;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+::view-transition-new(root) {
+  animation-name: theme-fade-in;
 }
 
-/* ── Responsive typography ────────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+@keyframes theme-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
-
-p {
-  line-height: 1.65;
-}
-
-/* ── Mobile tap highlight ─────────────────────────────────────────────────── */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* ── Smooth transitions on theme switch ──────────────────────────────────── */
-*, *::before, *::after {
-  transition-property: background-color, border-color, color;
-  transition-duration: 0.15s;
-  transition-timing-function: ease;
-}
-
-/* Exclude transitions that shouldn't animate on theme switch */
-.no-theme-transition,
-.no-theme-transition * {
-  transition: none !important;
+@keyframes theme-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

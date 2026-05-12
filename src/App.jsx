@@ -31,7 +31,17 @@ function App() {
     window.localStorage.setItem('sharestuff-theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    // Use View Transitions API if available for a smooth crossfade
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        setTheme(next);
+      });
+    } else {
+      setTheme(next);
+    }
+  };
 
   return (
     <Router>
