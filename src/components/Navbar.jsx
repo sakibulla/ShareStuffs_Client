@@ -114,6 +114,7 @@ export default function Navbar({ theme, onToggleTheme }) {
     { to: '/browse', label: 'Browse' },
     { to: '/about', label: 'About' },
     { to: '/contact', label: 'Contact' },
+    { to: '/complaint', label: 'Complaint' },
   ];
 
   return (

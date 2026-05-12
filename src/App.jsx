@@ -18,6 +18,7 @@ import PaymentCancel from './pages/PaymentCancel';
 import Messages from './pages/Messages';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import Complaint from './pages/Complaint';
 
 // AnimatePresence needs access to location, so we wrap routes in a child component
 function AnimatedRoutes() {
@@ -31,6 +32,7 @@ function AnimatedRoutes() {
         <Route path="/browse" element={<Browse />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/complaint" element={<Complaint />} />
         <Route path="/items/:id" element={<ItemDetail />} />
         <Route path="/items/new" element={<ProtectedRoute><AddEditItem /></ProtectedRoute>} />
         <Route path="/items/:id/edit" element={<ProtectedRoute><AddEditItem /></ProtectedRoute>} />
