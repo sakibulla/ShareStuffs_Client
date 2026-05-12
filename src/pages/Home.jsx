@@ -171,7 +171,9 @@ export default function Home() {
       </section>
 
       {/* ── STATS BAR ───────────────────────────────────────────────────────── */}
-      <section className="bg-neutral text-neutral-content py-8 px-4">
+      <section className="py-8 px-4" style={{
+        background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+      }}>
         <div className="max-w-5xl mx-auto">
           <div className="stats stats-vertical sm:stats-horizontal w-full bg-transparent shadow-none">
             {[
@@ -180,10 +182,10 @@ export default function Home() {
               { title: 'Happy Borrowers', value: '1,200+', desc: 'Successful borrows' },
               { title: 'Cities', value: '12', desc: 'Across the country' },
             ].map((stat) => (
-              <div key={stat.title} className="stat text-neutral-content">
-                <div className="stat-title text-neutral-content/70">{stat.title}</div>
-                <div className="stat-value">{stat.value}</div>
-                <div className="stat-desc text-neutral-content/60">{stat.desc}</div>
+              <div key={stat.title} className="stat" style={{ color: 'white' }}>
+                <div className="stat-title" style={{ color: 'rgba(255,255,255,0.7)' }}>{stat.title}</div>
+                <div className="stat-value" style={{ color: 'white' }}>{stat.value}</div>
+                <div className="stat-desc" style={{ color: 'rgba(255,255,255,0.6)' }}>{stat.desc}</div>
               </div>
             ))}
           </div>

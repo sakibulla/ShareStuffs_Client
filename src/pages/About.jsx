@@ -50,7 +50,9 @@ export default function About() {
       </section>
 
       {/* Stats */}
-      <section className="bg-neutral text-neutral-content py-10 px-4">
+      <section className="py-10 px-4" style={{
+        background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+      }}>
         <div className="max-w-5xl mx-auto">
           <div className="stats stats-vertical sm:stats-horizontal w-full bg-transparent shadow-none">
             {[
@@ -59,10 +61,10 @@ export default function About() {
               { title: 'Successful Borrows', value: '1,200+', desc: 'Happy transactions' },
               { title: 'Cities Covered', value: '12', desc: 'Across the country' },
             ].map((s) => (
-              <div key={s.title} className="stat text-neutral-content">
-                <div className="stat-title text-neutral-content/70">{s.title}</div>
-                <div className="stat-value">{s.value}</div>
-                <div className="stat-desc text-neutral-content/60">{s.desc}</div>
+              <div key={s.title} className="stat" style={{ color: 'white' }}>
+                <div className="stat-title" style={{ color: 'rgba(255,255,255,0.7)' }}>{s.title}</div>
+                <div className="stat-value" style={{ color: 'white' }}>{s.value}</div>
+                <div className="stat-desc" style={{ color: 'rgba(255,255,255,0.6)' }}>{s.desc}</div>
               </div>
             ))}
           </div>
@@ -153,17 +155,21 @@ export default function About() {
       </section>
 
       {/* CTA */}
-      <section className="bg-neutral text-neutral-content py-20 px-4">
+      <section className="py-20 px-4" style={{
+        background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+      }}>
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="text-4xl font-bold">Ready to join the community?</h2>
-          <p className="text-neutral-content/70 text-lg">
+          <h2 className="text-4xl font-bold" style={{ color: 'white' }}>Ready to join the community?</h2>
+          <p style={{ color: 'rgba(255,255,255,0.75)' }} className="text-lg">
             Start lending what you don't use, or borrow what you need — it only takes a minute.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/register" className="btn btn-primary btn-lg rounded-full">
+            <Link to="/register" className="btn btn-lg rounded-full font-bold transition-all duration-200 active:scale-95"
+              style={{ background: 'white', color: 'var(--color-primary)', border: 'none' }}>
               Get Started Free
             </Link>
-            <Link to="/browse" className="btn btn-outline btn-lg rounded-full border-neutral-content/30 text-neutral-content hover:bg-neutral-content hover:text-neutral">
+            <Link to="/browse" className="btn btn-lg rounded-full transition-all duration-200 active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}>
               Browse Items
             </Link>
           </div>
