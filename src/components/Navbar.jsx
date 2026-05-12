@@ -64,7 +64,7 @@ export default function Navbar({ theme, onToggleTheme }) {
         <input id="mobile-drawer" type="checkbox" className="drawer-toggle" />
         <div className="drawer-content flex flex-col">
           {/* Navbar */}
-          <nav className="navbar sticky top-0 z-50 bg-base-100/85 backdrop-blur-xl shadow-sm border-b border-base-300">
+          <nav className="navbar sticky top-0 z-50 navbar-blur shadow-sm border-b border-base-300/60 px-2 sm:px-4">
             <div className="navbar-start">
               {/* Hamburger - mobile only */}
               <label htmlFor="mobile-drawer" className="btn btn-ghost md:hidden">
