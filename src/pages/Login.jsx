@@ -1,28 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../utils/api';
-import {
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-} from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
-
-async function firebaseGoogleLogin(auth, provider) {
-  try {
-    // Try popup first — works in most browsers
-    return await signInWithPopup(auth, provider);
-  } catch (err) {
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-      // Fall back to redirect — page will reload, result handled below
-      await signInWithRedirect(auth, provider);
-      return null; // page is redirecting
-    }
-    throw err;
-  }
-}
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -31,39 +13,6 @@ export default function Login() {
   const { login } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
-
-  // Handle the result when Firebase redirects back to this page
-  useEffect(() => {
-    setLoading(true);
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result) return; // no pending redirect
-        await handleFirebaseUser(result.user);
-      })
-      .catch((err) => {
-        if (err?.code !== 'auth/no-current-user') {
-          console.error('Redirect result error:', err);
-          addToast('Google login failed. Please try again.', 'error');
-        }
-      })
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleFirebaseUser = async (firebaseUser) => {
-    const idToken = await firebaseUser.getIdToken();
-    const response = await api.post('/auth/firebase-login', {
-      name: firebaseUser.displayName,
-      email: firebaseUser.email,
-      firebaseUID: firebaseUser.uid,
-      avatar: firebaseUser.photoURL,
-      idToken,
-    });
-    const { token, user: userData } = response.data;
-    login(userData, token);
-    addToast('Login successful!', 'success');
-    navigate('/browse');
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -82,7 +31,6 @@ export default function Login() {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
-
     setLoading(true);
     try {
       const response = await api.post('/auth/login', {
@@ -100,25 +48,42 @@ export default function Login() {
     }
   };
 
+  // Popup is called DIRECTLY from the click handler — no async before signInWithPopup
+  // This is the only reliable way to avoid popup-blocked on all browsers
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const result = await firebaseGoogleLogin(auth, googleProvider);
-      if (result) {
-        // Popup succeeded
-        await handleFirebaseUser(result.user);
-      }
-      // If null, redirect is in progress — page will reload
+      // signInWithPopup must be called synchronously from a user gesture
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const response = await api.post('/auth/firebase-login', {
+        name: result.user.displayName,
+        email: result.user.email,
+        firebaseUID: result.user.uid,
+        avatar: result.user.photoURL,
+        idToken,
+      });
+      const { token, user: userData } = response.data;
+      login(userData, token);
+      addToast('Login successful!', 'success');
+      navigate('/browse');
     } catch (error) {
       console.error('Google login error:', error);
-      addToast(error.response?.data?.message || error.message || 'Google login failed', 'error');
+      if (error.code === 'auth/popup-blocked') {
+        addToast('Popup was blocked. Please allow popups for this site in your browser settings, then try again.', 'error');
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        // User closed the popup — silent, no toast needed
+      } else {
+        addToast(error.response?.data?.message || error.message || 'Google login failed', 'error');
+      }
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex fade-in">
-      {/* Left panel - desktop only */}
+      {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 brand-panel relative overflow-hidden flex-col items-center justify-center p-12 text-primary-content">
         <div className="absolute inset-x-12 top-16 h-px bg-primary-content/25"></div>
         <div className="absolute inset-x-12 bottom-16 h-px bg-primary-content/15"></div>
@@ -148,7 +113,6 @@ export default function Login() {
           <h1 className="text-3xl font-bold mb-1">Welcome back 👋</h1>
           <p className="text-base-content/60 mb-8">Sign in to your ShareStuff account</p>
 
-          {/* Google button */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
@@ -161,49 +125,40 @@ export default function Login() {
             Sign in with Google
           </button>
 
+          {/* Popup blocked hint */}
+          <p className="text-xs text-base-content/40 text-center -mt-2 mb-4">
+            If a popup doesn't appear, check your browser's address bar for a blocked popup icon and allow it.
+          </p>
+
           <div className="divider text-base-content/40 text-sm">or continue with email</div>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Email</span></label>
               <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 transition-all duration-200 ${errors.email ? 'input-error' : ''}`}
+                type="email" name="email" value={formData.email}
+                onChange={handleChange} placeholder="you@example.com"
+                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.email ? 'input-error' : ''}`}
               />
               {errors.email && <span className="text-error text-sm mt-1">{errors.email}</span>}
             </div>
-
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Password</span></label>
               <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 transition-all duration-200 ${errors.password ? 'input-error' : ''}`}
+                type="password" name="password" value={formData.password}
+                onChange={handleChange} placeholder="••••••••"
+                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.password ? 'input-error' : ''}`}
               />
               {errors.password && <span className="text-error text-sm mt-1">{errors.password}</span>}
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary btn-block mt-2 transition-all duration-200 active:scale-95"
-            >
+            <button type="submit" disabled={loading} className="btn btn-primary btn-block mt-2">
               {loading ? <span className="loading loading-spinner loading-sm"></span> : 'Sign In'}
             </button>
           </form>
 
           <p className="text-center text-base-content/60 mt-6 text-sm">
             Don't have an account?{' '}
-            <Link to="/register" className="link link-primary font-semibold">
-              Join ShareStuff
-            </Link>
+            <Link to="/register" className="link link-primary font-semibold">Join ShareStuff</Link>
           </p>
         </div>
       </div>

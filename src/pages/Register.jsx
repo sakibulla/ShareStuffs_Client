@@ -1,26 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import {
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-} from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import api from '../utils/api';
-
-async function firebaseGoogleLogin(auth, provider) {
-  try {
-    return await signInWithPopup(auth, provider);
-  } catch (err) {
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-    throw err;
-  }
-}
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -29,39 +13,6 @@ export default function Register() {
   const { login } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
-
-  // Handle the result when Firebase redirects back to this page
-  useEffect(() => {
-    setLoading(true);
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result) return;
-        await handleFirebaseUser(result.user);
-      })
-      .catch((err) => {
-        if (err?.code !== 'auth/no-current-user') {
-          console.error('Redirect result error:', err);
-          addToast('Google login failed. Please try again.', 'error');
-        }
-      })
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleFirebaseUser = async (firebaseUser) => {
-    const idToken = await firebaseUser.getIdToken();
-    const response = await api.post('/auth/firebase-login', {
-      name: firebaseUser.displayName,
-      email: firebaseUser.email,
-      firebaseUID: firebaseUser.uid,
-      avatar: firebaseUser.photoURL,
-      idToken,
-    });
-    const { token, user: userData } = response.data;
-    login(userData, token);
-    addToast('Account created!', 'success');
-    navigate('/browse');
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,7 +34,6 @@ export default function Register() {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
-
     setLoading(true);
     try {
       const response = await api.post('/auth/register', {
@@ -105,20 +55,36 @@ export default function Register() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const result = await firebaseGoogleLogin(auth, googleProvider);
-      if (result) {
-        await handleFirebaseUser(result.user);
-      }
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const response = await api.post('/auth/firebase-login', {
+        name: result.user.displayName,
+        email: result.user.email,
+        firebaseUID: result.user.uid,
+        avatar: result.user.photoURL,
+        idToken,
+      });
+      const { token, user: userData } = response.data;
+      login(userData, token);
+      addToast('Account created!', 'success');
+      navigate('/browse');
     } catch (error) {
       console.error('Google login error:', error);
-      addToast(error.response?.data?.message || error.message || 'Google login failed', 'error');
+      if (error.code === 'auth/popup-blocked') {
+        addToast('Popup was blocked. Please allow popups for this site in your browser settings, then try again.', 'error');
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        // silent
+      } else {
+        addToast(error.response?.data?.message || error.message || 'Google login failed', 'error');
+      }
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex fade-in">
-      {/* Left panel - desktop only */}
+      {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 brand-panel relative overflow-hidden flex-col items-center justify-center p-12 text-primary-content">
         <div className="absolute inset-x-12 top-16 h-px bg-primary-content/25"></div>
         <div className="absolute inset-x-12 bottom-16 h-px bg-primary-content/15"></div>
@@ -160,75 +126,57 @@ export default function Register() {
             Sign in with Google
           </button>
 
+          <p className="text-xs text-base-content/40 text-center -mt-2 mb-4">
+            If a popup doesn't appear, allow popups for this site in your browser settings.
+          </p>
+
           <div className="divider text-base-content/40 text-sm">or continue with email</div>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Full Name</span></label>
               <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 transition-all duration-200 ${errors.name ? 'input-error' : ''}`}
+                type="text" name="name" value={formData.name}
+                onChange={handleChange} placeholder="John Doe"
+                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.name ? 'input-error' : ''}`}
               />
               {errors.name && <span className="text-error text-sm mt-1">{errors.name}</span>}
             </div>
-
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Email</span></label>
               <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 transition-all duration-200 ${errors.email ? 'input-error' : ''}`}
+                type="email" name="email" value={formData.email}
+                onChange={handleChange} placeholder="you@example.com"
+                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.email ? 'input-error' : ''}`}
               />
               {errors.email && <span className="text-error text-sm mt-1">{errors.email}</span>}
             </div>
-
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Password</span></label>
               <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 transition-all duration-200 ${errors.password ? 'input-error' : ''}`}
+                type="password" name="password" value={formData.password}
+                onChange={handleChange} placeholder="••••••••"
+                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.password ? 'input-error' : ''}`}
               />
               {errors.password && <span className="text-error text-sm mt-1">{errors.password}</span>}
             </div>
-
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Confirm Password</span></label>
               <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className={`input input-bordered w-full focus:ring-2 ring-primary/30 transition-all duration-200 ${errors.confirmPassword ? 'input-error' : ''}`}
+                type="password" name="confirmPassword" value={formData.confirmPassword}
+                onChange={handleChange} placeholder="••••••••"
+                className={`input input-bordered w-full focus:ring-2 ring-primary/30 ${errors.confirmPassword ? 'input-error' : ''}`}
               />
               {errors.confirmPassword && <span className="text-error text-sm mt-1">{errors.confirmPassword}</span>}
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary btn-block mt-2 transition-all duration-200 active:scale-95"
-            >
+            <button type="submit" disabled={loading} className="btn btn-primary btn-block mt-2">
               {loading ? <span className="loading loading-spinner loading-sm"></span> : 'Create Account'}
             </button>
           </form>
 
           <p className="text-center text-base-content/60 mt-6 text-sm">
             Already have an account?{' '}
-            <Link to="/login" className="link link-primary font-semibold">
-              Login here
-            </Link>
+            <Link to="/login" className="link link-primary font-semibold">Login here</Link>
           </p>
         </div>
       </div>
