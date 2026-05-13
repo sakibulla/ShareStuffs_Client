@@ -282,9 +282,9 @@ export default function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
             {stats.map((stat, i) => (
-              <motion.div key={stat.label} variants={staggerItem} className="text-white">
+              <motion.div key={stat.label} variants={staggerItem} className="text-base-content dark:text-white">
                 <div className="text-3xl sm:text-4xl font-extrabold">{stat.value}</div>
-                <div className="text-white/70 text-sm mt-1">{stat.label}</div>
+                <div className="text-base-content/70 dark:text-white/70 text-sm mt-1">{stat.label}</div>
               </motion.div>
             ))}
           </div>
